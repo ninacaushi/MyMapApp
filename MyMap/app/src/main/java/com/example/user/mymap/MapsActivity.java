@@ -82,8 +82,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     public Criteria criteria;
     public String bestProvider;
 
-    //EditText mEdit;
-
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -98,17 +96,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 .findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
 
-//        mEdit   = (EditText)findViewById(R.id.distance);
-//        mEdit.setOnClickListener( new View.OnClickListener() {
-//            public void onClick(View view)
-//            {
-//                Log.v("EditText", mEdit.getText().toString());
-//                String value= mEdit.getText().toString();
-//                draw_dist = Integer.parseInt(value);
-//                Log.v("TAG_draw_dist","draw_dist" + draw_dist);
-//            }
-//        });
-
         final EditText mEdit = (EditText) findViewById(R.id.distance);
 
         mEdit.setOnEditorActionListener(new TextView.OnEditorActionListener() {
@@ -122,9 +109,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                       String value= mEdit.getText().toString();
                       draw_dist = Integer.parseInt(value);
                       Log.v("draw_dist", Integer.toString(draw_dist));
-
-
-
                       handled = true;
                 }
                 return handled;

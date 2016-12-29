@@ -42,7 +42,6 @@
         android:ems="10"
         android:id="@+id/distance"
         android:width="100px"
-
         android:textColor="#000000"
         android:imeOptions="actionDone"/>
 </LinearLayout>
