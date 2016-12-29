@@ -239,31 +239,71 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         }
 
     public void performJSON_veloh() throws ExecutionException, InterruptedException, JSONException {
-        JSONTask myJson = new JSONTask(this);
-        myJson.execute("https://developer.jcdecaux.com/rest/vls/stations/Luxembourg.json");
-        String result = myJson.get();
-        Log.d("Result", result);
+        locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
+        criteria = new Criteria();
+        bestProvider = String.valueOf(locationManager.getBestProvider(criteria, true)).toString();
 
-        JSONArray jsonArray_veloh = new JSONArray(result);
-        Log.d("JSON array", jsonArray_veloh.toString());
-        for (int i = 0; i < jsonArray_veloh.length(); i++) {
-            JSONObject jsonObject = jsonArray_veloh.getJSONObject(i);
-            double lng = Double.parseDouble(jsonArray_veloh.getJSONObject(i).getString("longitude"));
-            double lat = Double.parseDouble(jsonArray_veloh.getJSONObject(i).getString("latitude"));
-            String address = jsonArray_veloh.getJSONObject(i).getString("address");
-            String name = jsonArray_veloh.getJSONObject(i).getString("name");
-            String number = jsonArray_veloh.getJSONObject(i).getString("number");
-
-
-
-
-                mMap.addMarker(new MarkerOptions()
-                        .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_CYAN))
-                        .title(jsonObject.getString("name"))
-                        .snippet(Integer.toString((jsonObject.getInt("number"))))
-                        .position(new LatLng(lat, lng)));
-
+        //You can still do this if you like, you might get lucky:
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            checkLocationPermission();
         }
+        Location location = locationManager.getLastKnownLocation(bestProvider);
+        if (location != null) {
+            Log.e("TAG", "GPS is on");
+            latitude = location.getLatitude();
+            longitude = location.getLongitude();
+
+
+            JSONTask myJson = new JSONTask(this);
+            myJson.execute("https://developer.jcdecaux.com/rest/vls/stations/Luxembourg.json");
+            String result = myJson.get();
+            Log.d("Result", result);
+
+            JSONArray jsonArray_veloh = new JSONArray(result);
+            Log.d("JSON array", jsonArray_veloh.toString());
+
+            Circle circle = mMap.addCircle(new CircleOptions()
+                    .center(new LatLng(location.getLatitude(), location.getLongitude()))
+                    .radius(draw_dist)
+                    .strokeColor(Color.DKGRAY)
+                    .fillColor(Color.LTGRAY));
+
+            for (int i = 0; i < jsonArray_veloh.length(); i++) {
+                JSONObject jsonObject = jsonArray_veloh.getJSONObject(i);
+                double lng = Double.parseDouble(jsonArray_veloh.getJSONObject(i).getString("longitude"));
+                double lat = Double.parseDouble(jsonArray_veloh.getJSONObject(i).getString("latitude"));
+                String address = jsonArray_veloh.getJSONObject(i).getString("address");
+                String name = jsonArray_veloh.getJSONObject(i).getString("name");
+                String number = jsonArray_veloh.getJSONObject(i).getString("number");
+
+                Log.e("TAG_latlong", "latitude:" + latitude + " longitude:" + longitude + "marker_lat:" + lat + "marker_long:" + lng);
+
+                Location locationA = new Location("point A");
+                locationA.setLatitude(lat);
+                locationA.setLongitude(lng);
+
+                Location locationB = new Location("point B");
+                locationB.setLatitude(latitude);
+                locationB.setLongitude(longitude);
+
+                float distance = locationA.distanceTo(locationB);
+
+                if (distance < draw_dist) {
+
+
+                    mMap.addMarker(new MarkerOptions()
+                            .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_CYAN))
+                            .title(jsonObject.getString("name"))
+                            .snippet(Integer.toString((jsonObject.getInt("number"))))
+                            .position(new LatLng(lat, lng)));
+                }
+            }
+        } else {
+            //This is what you need:
+            //locationManager.requestLocationUpdates(bestProvider, 1000, 0, LocationListener listener);
+            LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient, mLocationRequest, this);
+        }
+
     }
 
     @Override
