@@ -6,7 +6,9 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.location.Criteria;
 import android.location.Location;
+import android.location.LocationManager;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.provider.Settings;
@@ -16,9 +18,13 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.support.v4.content.ContextCompat;
 import android.util.Log;
+import android.view.KeyEvent;
 import android.view.View;
+import android.view.inputmethod.EditorInfo;
 import android.webkit.HttpAuthHandler;
 import android.widget.Button;
+import android.widget.EditText;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.google.android.gms.common.ConnectionResult;
@@ -62,10 +68,22 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private GoogleMap mMap;
     private Circle Circle;
     private Marker mMarker;
+    public int draw_dist = 5000;
     GoogleApiClient mGoogleApiClient;
     LocationRequest mLocationRequest;
     Location mLastLocation;
     Marker mCurrLocationMarker;
+
+    //Location location;
+    double latitude;
+    double longitude;
+
+    public LocationManager locationManager;
+    public Criteria criteria;
+    public String bestProvider;
+
+    //EditText mEdit;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -79,6 +97,40 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
+
+//        mEdit   = (EditText)findViewById(R.id.distance);
+//        mEdit.setOnClickListener( new View.OnClickListener() {
+//            public void onClick(View view)
+//            {
+//                Log.v("EditText", mEdit.getText().toString());
+//                String value= mEdit.getText().toString();
+//                draw_dist = Integer.parseInt(value);
+//                Log.v("TAG_draw_dist","draw_dist" + draw_dist);
+//            }
+//        });
+
+        final EditText mEdit = (EditText) findViewById(R.id.distance);
+
+        mEdit.setOnEditorActionListener(new TextView.OnEditorActionListener() {
+            @Override
+            public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
+                boolean handled = false;
+
+                if (actionId == EditorInfo.IME_ACTION_SEND) {
+//                    sendMessage();
+                      Log.v("EditText", mEdit.getText().toString());
+                      String value= mEdit.getText().toString();
+                      draw_dist = Integer.parseInt(value);
+                      Log.v("draw_dist", Integer.toString(draw_dist));
+
+
+
+                      handled = true;
+                }
+                return handled;
+            }
+        });
+
 
         Button Busbutton = (Button) findViewById(R.id.button_bus);
         Busbutton.setOnClickListener(new View.OnClickListener() {
@@ -114,27 +166,76 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     }
 
     public void performJSON_buses() throws ExecutionException, InterruptedException, JSONException {
-        JSONTask myJson = new JSONTask(this);
-        myJson.execute("https://api.tfl.lu/stations");
-        String result = myJson.get();
-        Log.d("Result", result);
 
-        JSONArray jsonArray_buses = new JSONArray(result);
-        Log.d("JSON array", jsonArray_buses.toString());
-        for (int i = 0; i < jsonArray_buses.length(); i++) {
-            JSONObject jsonObject = jsonArray_buses.getJSONObject(i);
-            double lng = Double.parseDouble(jsonArray_buses.getJSONObject(i).getString("longitude"));
-            double lat = Double.parseDouble(jsonArray_buses.getJSONObject(i).getString("latitude"));
 
-            /*float[] distance = new float[2];
-            Location.distanceBetween(lat, lng, Circle.getCenter().latitude, Circle.getCenter().longitude, distance);
-            if (distance[0] < Circle.getRadius()) {*/
+        locationManager = (LocationManager)  this.getSystemService(Context.LOCATION_SERVICE);
+        criteria = new Criteria();
+        bestProvider = String.valueOf(locationManager.getBestProvider(criteria, true)).toString();
+
+        //You can still do this if you like, you might get lucky:
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            checkLocationPermission();
+        }
+        Location location = locationManager.getLastKnownLocation(bestProvider);
+        if (location != null) {
+            Log.e("TAG", "GPS is on");
+            latitude = location.getLatitude();
+            longitude = location.getLongitude();
+
+            JSONTask myJson = new JSONTask(this);
+            myJson.execute("https://api.tfl.lu/stations");
+            String result = myJson.get();
+            Log.d("Result", result);
+
+            JSONArray jsonArray_buses = new JSONArray(result);
+            Log.d("JSON array", jsonArray_buses.toString());
+
+            Circle circle = mMap.addCircle(new CircleOptions()
+                    .center(new LatLng(location.getLatitude(), location.getLongitude()))
+                    .radius(draw_dist)
+                    .strokeColor(Color.DKGRAY)
+                    .fillColor(Color.LTGRAY));
+
+
+
+            for (int i = 0; i < jsonArray_buses.length(); i++) {
+                JSONObject jsonObject = jsonArray_buses.getJSONObject(i);
+                double lng = Double.parseDouble(jsonArray_buses.getJSONObject(i).getString("longitude"));
+                double lat = Double.parseDouble(jsonArray_buses.getJSONObject(i).getString("latitude"));
+
+                Log.e("TAG_latlong", "latitude:" + latitude + " longitude:" + longitude + "marker_lat:" + lat + "marker_long:" + lng);
+
+                Location locationA = new Location("point A");
+                locationA.setLatitude(lat);
+                locationA.setLongitude(lng);
+
+                Location locationB = new Location("point B");
+                locationB.setLatitude(latitude);
+                locationB.setLongitude(longitude);
+
+                float distance = locationA.distanceTo(locationB);
+
+                if (distance < draw_dist) {
+
+
                 mMap.addMarker(new MarkerOptions()
                         .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_MAGENTA))
                         .title(jsonObject.getString("name"))
                         .snippet(Integer.toString((jsonObject.getInt("id"))))
                         .position(new LatLng(lat, lng)));
+                }
+
             }
+
+
+        }
+        else{
+            //This is what you need:
+            //locationManager.requestLocationUpdates(bestProvider, 1000, 0, LocationListener listener);
+            LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient, mLocationRequest, this);
+        }
+
+
         }
 
     public void performJSON_veloh() throws ExecutionException, InterruptedException, JSONException {
@@ -153,14 +254,15 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             String name = jsonArray_veloh.getJSONObject(i).getString("name");
             String number = jsonArray_veloh.getJSONObject(i).getString("number");
 
-            /*float[] distance = new float[2];
-            Location.distanceBetween(lat, lng, Circle.getCenter().latitude, Circle.getCenter().longitude, distance);
-            if (distance[0] < Circle.getRadius()) {*/
-            mMap.addMarker(new MarkerOptions()
-                    .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_CYAN))
-                    .title(jsonObject.getString("name"))
-                    .snippet(Integer.toString((jsonObject.getInt("number"))))
-                    .position(new LatLng(lat, lng)));
+
+
+
+                mMap.addMarker(new MarkerOptions()
+                        .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_CYAN))
+                        .title(jsonObject.getString("name"))
+                        .snippet(Integer.toString((jsonObject.getInt("number"))))
+                        .position(new LatLng(lat, lng)));
+
         }
     }
 
@@ -224,11 +326,10 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         markerOptions.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE));
         mCurrLocationMarker = mMap.addMarker(markerOptions);
 
-        Circle circle = mMap.addCircle(new CircleOptions()
-                .center(new LatLng(location.getLatitude(), location.getLongitude()))
-                .radius(10000)
-                .strokeColor(Color.DKGRAY)
-                .fillColor(Color.LTGRAY));
+        latitude = location.getLatitude();
+        longitude = location.getLongitude();
+//Here was the circle
+
 
         //move map camera
         mMap.moveCamera(CameraUpdateFactory.newLatLng(latlng));
