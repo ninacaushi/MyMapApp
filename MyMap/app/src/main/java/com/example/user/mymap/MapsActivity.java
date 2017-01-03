@@ -59,6 +59,8 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.concurrent.ExecutionException;
 
+import static java.lang.Math.min;
+
 
 public class MapsActivity extends FragmentActivity implements OnMapReadyCallback,
         GoogleApiClient.ConnectionCallbacks,
@@ -81,6 +83,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     public LocationManager locationManager;
     public Criteria criteria;
     public String bestProvider;
+
+    float min_distance = 1000000;
+    int closest = 0;
 
 
     @Override
@@ -147,6 +152,100 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 }
             }
         });
+
+        Button ClosestBusbutton = (Button) findViewById(R.id.button_closest_bus);
+        ClosestBusbutton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                try {
+                    performJSON_closest_buses();
+                } catch (ExecutionException e) {
+                    e.printStackTrace();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+            }
+        });
+    }
+
+    public void performJSON_closest_buses() throws ExecutionException, InterruptedException, JSONException {
+
+
+        locationManager = (LocationManager)  this.getSystemService(Context.LOCATION_SERVICE);
+        criteria = new Criteria();
+        bestProvider = String.valueOf(locationManager.getBestProvider(criteria, true)).toString();
+
+        //You can still do this if you like, you might get lucky:
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            checkLocationPermission();
+        }
+        Location location = locationManager.getLastKnownLocation(bestProvider);
+        if (location != null) {
+            Log.e("TAG", "GPS is on");
+            latitude = location.getLatitude();
+            longitude = location.getLongitude();
+
+            JSONTask myJson = new JSONTask(this);
+            myJson.execute("https://api.tfl.lu/stations");
+            String result = myJson.get();
+            Log.d("Result", result);
+
+            JSONArray jsonArray_buses = new JSONArray(result);
+            Log.d("JSON array", jsonArray_buses.toString());
+
+            //Circle circle = mMap.addCircle(new CircleOptions()
+               //.center(new LatLng(location.getLatitude(), location.getLongitude()))
+               //.radius(draw_dist)
+               //.strokeColor(Color.DKGRAY)
+               //.fillColor(Color.LTGRAY));
+
+
+
+            for (int i = 0; i < jsonArray_buses.length(); i++) {
+                JSONObject jsonObject = jsonArray_buses.getJSONObject(i);
+                double lng = Double.parseDouble(jsonArray_buses.getJSONObject(i).getString("longitude"));
+                double lat = Double.parseDouble(jsonArray_buses.getJSONObject(i).getString("latitude"));
+
+                Log.e("TAG_latlong", "latitude:" + latitude + " longitude:" + longitude + "marker_lat:" + lat + "marker_long:" + lng);
+
+                Location locationA = new Location("point A");
+                locationA.setLatitude(lat);
+                locationA.setLongitude(lng);
+
+                Location locationB = new Location("point B");
+                locationB.setLatitude(latitude);
+                locationB.setLongitude(longitude);
+
+
+                float min_distance_old = min_distance;
+                min_distance = min(min_distance, locationA.distanceTo(locationB));
+
+                if (min_distance_old != min_distance) {
+                    closest = i;
+                }
+
+            }
+
+
+            JSONObject display_jsonObject = jsonArray_buses.getJSONObject(closest);
+            double lng = Double.parseDouble(jsonArray_buses.getJSONObject(closest).getString("longitude"));
+            double lat = Double.parseDouble(jsonArray_buses.getJSONObject(closest).getString("latitude"));
+            mMap.addMarker(new MarkerOptions()
+                    .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_MAGENTA))
+                    .title(display_jsonObject.getString("name"))
+                    .snippet(Integer.toString((display_jsonObject.getInt("id"))))
+                    .position(new LatLng(lat, lng)));
+
+        }
+        else{
+            //This is what you need:
+            //locationManager.requestLocationUpdates(bestProvider, 1000, 0, LocationListener listener);
+            LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient, mLocationRequest, this);
+        }
+
+
     }
 
     public void performJSON_buses() throws ExecutionException, InterruptedException, JSONException {
