@@ -59,6 +59,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.concurrent.ExecutionException;
 
+import static com.example.user.mymap.R.id.map;
 import static java.lang.Math.min;
 
 
@@ -87,6 +88,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     float min_distance = 1000000;
     int closest = 0;
 
+    public final void clear() {
+            mMap.clear();
+        }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -98,7 +102,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             checkLocationPermission();
         }
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
-                .findFragmentById(R.id.map);
+                .findFragmentById(map);
         mapFragment.getMapAsync(this);
 
         final EditText mEdit = (EditText) findViewById(R.id.distance);
@@ -126,6 +130,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             @Override
             public void onClick(View v) {
                 try {
+                    clear();
                     performJSON_buses();
                 } catch (ExecutionException e) {
                     e.printStackTrace();
@@ -142,6 +147,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             @Override
             public void onClick(View v) {
                 try {
+                    clear();
                     performJSON_veloh();
                 } catch (ExecutionException e) {
                     e.printStackTrace();
@@ -158,6 +164,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             @Override
             public void onClick(View v) {
                 try {
+                    clear();
                     performJSON_closest_buses();
                 } catch (ExecutionException e) {
                     e.printStackTrace();
@@ -171,7 +178,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     }
 
     public void performJSON_closest_buses() throws ExecutionException, InterruptedException, JSONException {
-
 
         locationManager = (LocationManager)  this.getSystemService(Context.LOCATION_SERVICE);
         criteria = new Criteria();
