@@ -4,6 +4,8 @@ import android.Manifest;
 import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.DialogInterface;
+import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.location.Criteria;
@@ -21,6 +23,7 @@ import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.inputmethod.EditorInfo;
+import android.view.inputmethod.InputMethodManager;
 import android.webkit.HttpAuthHandler;
 import android.widget.Button;
 import android.widget.EditText;
@@ -57,6 +60,7 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.List;
 import java.util.concurrent.ExecutionException;
 
 import static com.example.user.mymap.R.id.map;
@@ -66,6 +70,7 @@ import static java.lang.Math.min;
 public class MapsActivity extends FragmentActivity implements OnMapReadyCallback,
         GoogleApiClient.ConnectionCallbacks,
         GoogleApiClient.OnConnectionFailedListener,
+        GoogleMap.OnInfoWindowClickListener,
         LocationListener {
 
     private GoogleMap mMap;
@@ -78,16 +83,29 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     Marker mCurrLocationMarker;
 
     //Location location;
-    double latitude;
-    double longitude;
+    public double latitude;
+    public double longitude;
 
     public LocationManager locationManager;
     public Criteria criteria;
     public String bestProvider;
 
-    float min_distance = 1000000;
-    int closest = 0;
+    public float min_distance = 1000000;
+    public int closest = 0;
 
+    boolean display_radius = true;
+
+    //save markers on rotate device
+    private List<Marker> markerList;
+    public MapsActivity(){
+        if(markerList == null){
+            markerList = new ArrayList<Marker>();
+        }
+    }
+
+
+
+    //clear the markers/poly on new action
     public final void clear() {
             mMap.clear();
         }
@@ -97,6 +115,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_maps);
 
+
         // Obtain the SupportMapFragment and get notified when the map is ready to be used.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             checkLocationPermission();
@@ -105,6 +124,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 .findFragmentById(map);
         mapFragment.getMapAsync(this);
 
+        //LoadPreferences();
+
         final EditText mEdit = (EditText) findViewById(R.id.distance);
 
         mEdit.setOnEditorActionListener(new TextView.OnEditorActionListener() {
@@ -112,13 +133,20 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
                 boolean handled = false;
 
-                if (actionId == EditorInfo.IME_ACTION_SEND) {
-//                    sendMessage();
-                      Log.v("EditText", mEdit.getText().toString());
-                      String value= mEdit.getText().toString();
+                if (actionId == EditorInfo.IME_ACTION_DONE) {
+                    DeletePreferences();
+                    clear();
+
+                      Log.e("EditText", mEdit.getText().toString());
+                      String value = mEdit.getText().toString();
                       draw_dist = Integer.parseInt(value);
-                      Log.v("draw_dist", Integer.toString(draw_dist));
-                      handled = true;
+                      Log.e("draw_dist", Integer.toString(draw_dist));
+
+                    InputMethodManager inputManager = (InputMethodManager)
+                            getSystemService(Context.INPUT_METHOD_SERVICE);
+                    inputManager.hideSoftInputFromWindow(getCurrentFocus().getWindowToken(),
+                            InputMethodManager.HIDE_NOT_ALWAYS);
+                    handled = true;
                 }
                 return handled;
             }
@@ -131,6 +159,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             public void onClick(View v) {
                 try {
                     clear();
+                    DeletePreferences();
                     performJSON_buses();
                 } catch (ExecutionException e) {
                     e.printStackTrace();
@@ -148,6 +177,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             public void onClick(View v) {
                 try {
                     clear();
+                    DeletePreferences();
                     performJSON_veloh();
                 } catch (ExecutionException e) {
                     e.printStackTrace();
@@ -165,6 +195,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             public void onClick(View v) {
                 try {
                     clear();
+                    DeletePreferences();
                     performJSON_closest_buses();
                 } catch (ExecutionException e) {
                     e.printStackTrace();
@@ -175,6 +206,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 }
             }
         });
+
     }
 
     public void performJSON_closest_buses() throws ExecutionException, InterruptedException, JSONException {
@@ -201,15 +233,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             JSONArray jsonArray_buses = new JSONArray(result);
             Log.d("JSON array", jsonArray_buses.toString());
 
-            //Circle circle = mMap.addCircle(new CircleOptions()
-               //.center(new LatLng(location.getLatitude(), location.getLongitude()))
-               //.radius(draw_dist)
-               //.strokeColor(Color.DKGRAY)
-               //.fillColor(Color.LTGRAY));
-
-
-
-            for (int i = 0; i < jsonArray_buses.length(); i++) {
+             for (int i = 0; i < jsonArray_buses.length(); i++) {
                 JSONObject jsonObject = jsonArray_buses.getJSONObject(i);
                 double lng = Double.parseDouble(jsonArray_buses.getJSONObject(i).getString("longitude"));
                 double lat = Double.parseDouble(jsonArray_buses.getJSONObject(i).getString("latitude"));
@@ -232,26 +256,81 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                     closest = i;
                 }
 
-            }
+             } //end for
 
 
             JSONObject display_jsonObject = jsonArray_buses.getJSONObject(closest);
+            //save
             double lng = Double.parseDouble(jsonArray_buses.getJSONObject(closest).getString("longitude"));
             double lat = Double.parseDouble(jsonArray_buses.getJSONObject(closest).getString("latitude"));
-            mMap.addMarker(new MarkerOptions()
+            markerList.add(mMap.addMarker(new MarkerOptions()
                     .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_MAGENTA))
                     .title(display_jsonObject.getString("name"))
                     .snippet(Integer.toString((display_jsonObject.getInt("id"))))
-                    .position(new LatLng(lat, lng)));
+                    .position(new LatLng(lat, lng))));
+            display_radius = false;
 
-        }
+            mMap.setOnInfoWindowClickListener(new GoogleMap.OnInfoWindowClickListener() {
+
+                @Override
+                public void onInfoWindowClick(Marker marker) {
+                    // TODO Auto-generated method stub
+                    Log.d("", marker.getSnippet());
+                    try {
+                        clear();
+                        perform_Json_departures();
+                    } catch (ExecutionException e) {
+                        e.printStackTrace();
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+
+                }
+            });
+
+//            mMap.setOnInfoWindowClickListener(new GoogleMap.OnInfoWindowClickListener() {
+//                @Override
+//                public void onInfoWindowClick(Marker marker) {
+//                    Intent intent = new Intent(MapsActivity.this,NewActivity.class);
+//                    startActivity(intent);
+//
+//
+//                }
+//            });
+
+        SavePreferences();
+        } //end if location null
         else{
             //This is what you need:
             //locationManager.requestLocationUpdates(bestProvider, 1000, 0, LocationListener listener);
             LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient, mLocationRequest, this);
         }
 
+    } //end json
 
+    public void perform_Json_departures () throws ExecutionException, InterruptedException, JSONException {
+
+        Log.e("TAG_title_click", "CLICKED Title!");
+
+        //Log.d("", marker.getTitle());
+
+        JSONTask myJson1 = new JSONTask(this);
+        myJson1.execute("https://api.tfl.lu/departures/8800088");
+        String result = myJson1.get();
+        Log.d("Result", result);
+
+        JSONArray jsonArray_departures = new JSONArray(result);
+        Log.d("JSON array", jsonArray_departures.toString());
+
+    }
+
+
+    @Override
+    public void onInfoWindowClick(Marker marker) {
+        Toast.makeText(this, "Info window clicked",
+                Toast.LENGTH_SHORT).show();
     }
 
     public void performJSON_buses() throws ExecutionException, InterruptedException, JSONException {
@@ -277,8 +356,10 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             Log.d("Result", result);
 
             JSONArray jsonArray_buses = new JSONArray(result);
+            //jsonArray_save = jsonArray_buses;
             Log.d("JSON array", jsonArray_buses.toString());
 
+            display_radius = true;
             Circle circle = mMap.addCircle(new CircleOptions()
                     .center(new LatLng(location.getLatitude(), location.getLongitude()))
                     .radius(draw_dist)
@@ -289,6 +370,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
             for (int i = 0; i < jsonArray_buses.length(); i++) {
                 JSONObject jsonObject = jsonArray_buses.getJSONObject(i);
+
                 double lng = Double.parseDouble(jsonArray_buses.getJSONObject(i).getString("longitude"));
                 double lat = Double.parseDouble(jsonArray_buses.getJSONObject(i).getString("latitude"));
 
@@ -307,15 +389,18 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 if (distance < draw_dist) {
 
 
-                mMap.addMarker(new MarkerOptions()
+                    markerList.add(mMap.addMarker (new MarkerOptions()
                         .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_MAGENTA))
                         .title(jsonObject.getString("name"))
                         .snippet(Integer.toString((jsonObject.getInt("id"))))
-                        .position(new LatLng(lat, lng)));
+                        .position(new LatLng(lat, lng))));
+
+                //markerList.add(mMap.addMarker(mo));
                 }
 
             }
 
+            SavePreferences();
 
         }
         else{
@@ -350,6 +435,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
             JSONArray jsonArray_veloh = new JSONArray(result);
             Log.d("JSON array", jsonArray_veloh.toString());
+            display_radius = true;
 
             Circle circle = mMap.addCircle(new CircleOptions()
                     .center(new LatLng(location.getLatitude(), location.getLongitude()))
@@ -380,13 +466,15 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 if (distance < draw_dist) {
 
 
-                    mMap.addMarker(new MarkerOptions()
+                    markerList.add(mMap.addMarker(new MarkerOptions()
                             .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_CYAN))
                             .title(jsonObject.getString("name"))
                             .snippet(Integer.toString((jsonObject.getInt("number"))))
-                            .position(new LatLng(lat, lng)));
+                            .position(new LatLng(lat, lng))));
                 }
             }
+
+            SavePreferences();
         } else {
             //This is what you need:
             //locationManager.requestLocationUpdates(bestProvider, 1000, 0, LocationListener listener);
@@ -405,11 +493,14 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
                 buildGoogleApiClient();
                 mMap.setMyLocationEnabled(true);
+                mMap.setOnInfoWindowClickListener(this);
             }
         } else {
             buildGoogleApiClient();
             mMap.setMyLocationEnabled(true);
+            mMap.setOnInfoWindowClickListener(this);
         }
+        LoadPreferences();
     }
 
     protected synchronized void buildGoogleApiClient() {
@@ -457,8 +548,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
         latitude = location.getLatitude();
         longitude = location.getLongitude();
-//Here was the circle
 
+        //Here was the circle
 
         //move map camera
         mMap.moveCamera(CameraUpdateFactory.newLatLng(latlng));
@@ -527,5 +618,100 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         }
     }
 
+    private void SavePreferences(){
+        SharedPreferences sharedPreferences = getPreferences(MODE_PRIVATE);
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        editor.clear();
+        editor.putInt("listSize", markerList.size());
+        editor.putInt("draw_dist", draw_dist);
+        editor.putBoolean("display_radius", display_radius);
+        //editor.putLong("latitude", latitude);
+
+        for(int i = 0; i <markerList.size(); i++){
+            editor.putFloat("lat"+i, (float) markerList.get(i).getPosition().latitude);
+            editor.putFloat("lng"+i, (float) markerList.get(i).getPosition().longitude);
+            editor.putString("title"+i, markerList.get(i).getTitle());
+            editor.putString("snippet"+i, markerList.get(i).getSnippet());
+        }
+
+        editor.commit();
+        Log.e("TAG_save", "saved preferences");
+    }
+
+
+    private void DeletePreferences() {
+        markerList.clear();
+        SharedPreferences sharedPreferences = getPreferences(MODE_PRIVATE);
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        editor.clear();
+        editor.commit();
+    }
+
+    private void LoadPreferences(){
+        SharedPreferences sharedPreferences = getPreferences(MODE_PRIVATE);
+
+        int size = sharedPreferences.getInt("listSize", 0);
+        draw_dist = sharedPreferences.getInt("draw_dist", 0);
+        display_radius = sharedPreferences.getBoolean("display_radius", false);
+
+        if (size > 0) {
+            for (int i = 0; i < size; i++) {
+                double lat = (double) sharedPreferences.getFloat("lat" + i, 0);
+                double lng = (double) sharedPreferences.getFloat("lng" + i, 0);
+                String title = sharedPreferences.getString("title" + i, "NULL");
+                String snippet = sharedPreferences.getString("snippet" + i, "NULL");
+
+                markerList.add(mMap.addMarker(new MarkerOptions().position(new LatLng(lat, lng)).title(title).snippet(snippet)));
+            }
+
+            locationManager = (LocationManager)  this.getSystemService(Context.LOCATION_SERVICE);
+            criteria = new Criteria();
+            bestProvider = String.valueOf(locationManager.getBestProvider(criteria, true)).toString();
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                checkLocationPermission();
+            }
+
+            Location location = locationManager.getLastKnownLocation(bestProvider);
+
+            if ((location != null)) {
+                Log.e("TAG", "GPS is on");
+                if (display_radius) {
+
+                    latitude = location.getLatitude();
+                    longitude = location.getLongitude();
+
+                    Circle circle = mMap.addCircle(new CircleOptions()
+                            .center(new LatLng(location.getLatitude(), location.getLongitude()))
+                            .radius(draw_dist)
+                            .strokeColor(Color.DKGRAY)
+                            .fillColor(Color.LTGRAY));
+                }
+            }
+            else{
+                LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient, mLocationRequest, this);
+            }
+        }
+
+
+    }
+    protected void onPause() {
+        super.onPause();
+        SavePreferences();
+    }
+    @Override
+    public void onSaveInstanceState (Bundle savedInstanceState) {
+            SavePreferences();
+        super.onSaveInstanceState(savedInstanceState);
+    }
+
+    //onRestoreInstanceState
+    @Override
+    public void onRestoreInstanceState(Bundle savedInstanceState) {
+
+        super.onRestoreInstanceState(savedInstanceState);
+
+    }
+//update
 
 }
