@@ -13,6 +13,7 @@ import android.location.Location;
 import android.location.LocationManager;
 import android.os.AsyncTask;
 import android.os.Build;
+import android.os.CountDownTimer;
 import android.provider.Settings;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentActivity;
@@ -91,20 +92,21 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     public Criteria criteria;
     public String bestProvider;
 
+    //used to compute closest bus/veloh
     public float min_distance = 1000000;
     public int closest = 0;
 
+    //booleans to reconstruct markers/circle from shared prefs
     boolean display_radius = true;
     boolean bus = true;
 
-    //save markers on rotate device
+    //for saving markers on rotate device
     private List<Marker> markerList;
     public MapsActivity(){
         if(markerList == null){
             markerList = new ArrayList<Marker>();
         }
     }
-
 
 
     //clear the markers/poly on new action
@@ -310,11 +312,10 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
                 @Override
                 public void onInfoWindowClick(Marker marker) {
-                    // TODO Auto-generated method stub
-                    Log.d("", marker.getSnippet());
+                    Log.d("Info Window click", marker.getSnippet());
                     try {
-                        clear();
-                        perform_Json_departures();
+                        //clear();
+                        perform_Json_departures(marker.getSnippet(),marker.getTitle());
                     } catch (ExecutionException e) {
                         e.printStackTrace();
                     } catch (InterruptedException e) {
@@ -414,7 +415,24 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
                 //markerList.add(mMap.addMarker(mo));
                 }
+                mMap.setOnInfoWindowClickListener(new GoogleMap.OnInfoWindowClickListener() {
 
+                    @Override
+                    public void onInfoWindowClick(Marker marker) {
+                        Log.d("Info Window click", marker.getSnippet());
+                        try {
+                            //clear();
+                            perform_Json_departures(marker.getSnippet(),marker.getTitle());
+                        } catch (ExecutionException e) {
+                            e.printStackTrace();
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        } catch (JSONException e) {
+                            e.printStackTrace();
+                        }
+
+                    }
+                });
             }
 
             SavePreferences();
@@ -823,20 +841,36 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
 //////// REAL TIME DEPARTURES METHODS //////////////////////////////////////
 
-public void perform_Json_departures () throws ExecutionException, InterruptedException, JSONException {
+public void perform_Json_departures (String stop_id, String stop_name) throws ExecutionException, InterruptedException, JSONException {
 
     Log.e("TAG_title_click", "CLICKED Title!");
 
     //Log.d("", marker.getTitle());
 
     JSONTask myJson1 = new JSONTask(this);
-    myJson1.execute("https://api.tfl.lu/departures/8800088");
+    myJson1.execute("https://api.tfl.lu/departures/"+stop_id);
     String result = myJson1.get();
     Log.d("Result", result);
 
     JSONArray jsonArray_departures = new JSONArray(result);
     Log.d("JSON array", jsonArray_departures.toString());
+    Toast.makeText(this, "Departures obtained for: "+stop_id,
+            Toast.LENGTH_SHORT).show();
+    String lines = " ";
+    for (int i = 0; i < jsonArray_departures.length(); i++) {
+        JSONObject jsonObject = jsonArray_departures.getJSONObject(i);
 
+        lines = lines+jsonArray_departures.getJSONObject(i).getString("line")+" ";
+        //String destination = jsonArray_departures.getJSONObject(i).getString("destination");
+    }
+
+    final Toast tag = Toast.makeText(getBaseContext(), stop_name+": "+lines, Toast.LENGTH_SHORT);
+    tag.show();
+    new CountDownTimer(9000, 1000)
+    {
+        public void onTick(long millisUntilFinished) {tag.show();}
+        public void onFinish() {tag.show();}
+    }.start();
 }
 
     @Override
