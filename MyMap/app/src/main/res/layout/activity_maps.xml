@@ -55,7 +55,15 @@
         android:padding="10dp"
         android:paddingRight="10dp"
         android:text="Closest buses" />
-
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/button_closest_veloh"
+        android:layout_marginTop="20dp"
+        android:onClick="Click"
+        android:padding="10dp"
+        android:paddingRight="10dp"
+        android:text="Closest veloh" />
 </LinearLayout>
 </fragment>
 

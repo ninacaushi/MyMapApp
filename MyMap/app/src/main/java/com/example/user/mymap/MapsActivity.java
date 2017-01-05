@@ -95,6 +95,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     public int closest = 0;
 
     boolean display_radius = true;
+    boolean bus = true;
 
     //save markers on rotate device
     private List<Marker> markerList;
@@ -110,6 +111,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     public final void clear() {
             mMap.clear();
         }
+
+////// ON CREATE /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -221,8 +224,27 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             }
         });
 
+        Button ClosestVelohbutton = (Button) findViewById(R.id.button_closest_veloh);
+        ClosestVelohbutton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                try {
+                    clear();
+                    DeletePreferences();
+                    performJSON_closest_veloh();
+                } catch (ExecutionException e) {
+                    e.printStackTrace();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+            }
+        });
+
     }
 
+///// CLOSEST STOP ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     public void performJSON_closest_buses() throws ExecutionException, InterruptedException, JSONException {
 
         locationManager = (LocationManager)  this.getSystemService(Context.LOCATION_SERVICE);
@@ -245,7 +267,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             Log.d("Result", result);
 
             JSONArray jsonArray_buses = new JSONArray(result);
-            Log.d("JSON array", jsonArray_buses.toString());
+            Log.d("JSON array closest stop", jsonArray_buses.toString());
 
              for (int i = 0; i < jsonArray_buses.length(); i++) {
                 JSONObject jsonObject = jsonArray_buses.getJSONObject(i);
@@ -283,7 +305,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                     .snippet(Integer.toString((display_jsonObject.getInt("id"))))
                     .position(new LatLng(lat, lng))));
             display_radius = false;
-
+            bus = true;
             mMap.setOnInfoWindowClickListener(new GoogleMap.OnInfoWindowClickListener() {
 
                 @Override
@@ -322,30 +344,10 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient, mLocationRequest, this);
         }
 
-    } //end json
-
-    public void perform_Json_departures () throws ExecutionException, InterruptedException, JSONException {
-
-        Log.e("TAG_title_click", "CLICKED Title!");
-
-        //Log.d("", marker.getTitle());
-
-        JSONTask myJson1 = new JSONTask(this);
-        myJson1.execute("https://api.tfl.lu/departures/8800088");
-        String result = myJson1.get();
-        Log.d("Result", result);
-
-        JSONArray jsonArray_departures = new JSONArray(result);
-        Log.d("JSON array", jsonArray_departures.toString());
-
-    }
+} //end json
 
 
-    @Override
-    public void onInfoWindowClick(Marker marker) {
-        Toast.makeText(this, "Info window clicked",
-                Toast.LENGTH_SHORT).show();
-    }
+////// BUS STATIONS //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     public void performJSON_buses() throws ExecutionException, InterruptedException, JSONException {
 
@@ -371,9 +373,10 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
             JSONArray jsonArray_buses = new JSONArray(result);
             //jsonArray_save = jsonArray_buses;
-            Log.d("JSON array", jsonArray_buses.toString());
+            Log.d("JSON array bus stations", jsonArray_buses.toString());
 
             display_radius = true;
+            bus = true;
             Circle circle = mMap.addCircle(new CircleOptions()
                     .center(new LatLng(location.getLatitude(), location.getLongitude()))
                     .radius(draw_dist)
@@ -424,7 +427,82 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         }
 
 
+    }
+
+///// CLOSEST VELOH ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    public void performJSON_closest_veloh() throws ExecutionException, InterruptedException, JSONException {
+
+        locationManager = (LocationManager)  this.getSystemService(Context.LOCATION_SERVICE);
+        criteria = new Criteria();
+        bestProvider = String.valueOf(locationManager.getBestProvider(criteria, true)).toString();
+
+        //You can still do this if you like, you might get lucky:
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            checkLocationPermission();
         }
+        Location location = locationManager.getLastKnownLocation(bestProvider);
+        if (location != null) {
+            Log.e("TAG", "GPS is on");
+            latitude = location.getLatitude();
+            longitude = location.getLongitude();
+
+            JSONTask myJson = new JSONTask(this);
+            myJson.execute("https://developer.jcdecaux.com/rest/vls/stations/Luxembourg.json");
+            String result = myJson.get();
+            Log.d("Result", result);
+
+            JSONArray jsonArray_closest_veloh = new JSONArray(result);
+            Log.d("JSON array", jsonArray_closest_veloh.toString());
+
+            for (int i = 0; i < jsonArray_closest_veloh.length(); i++) {
+                JSONObject jsonObject = jsonArray_closest_veloh.getJSONObject(i);
+                double lng = Double.parseDouble(jsonArray_closest_veloh.getJSONObject(i).getString("longitude"));
+                double lat = Double.parseDouble(jsonArray_closest_veloh.getJSONObject(i).getString("latitude"));
+
+                Log.e("TAG_latlong", "latitude:" + latitude + " longitude:" + longitude + "marker_lat:" + lat + "marker_long:" + lng);
+
+                Location locationA = new Location("point A");
+                locationA.setLatitude(lat);
+                locationA.setLongitude(lng);
+
+                Location locationB = new Location("point B");
+                locationB.setLatitude(latitude);
+                locationB.setLongitude(longitude);
+
+
+                float min_distance_old = min_distance;
+                min_distance = min(min_distance, locationA.distanceTo(locationB));
+
+                if (min_distance_old != min_distance) {
+                    closest = i;
+                }
+
+            } //end for
+
+
+            JSONObject display_jsonObject = jsonArray_closest_veloh.getJSONObject(closest);
+            //save
+            double lng = Double.parseDouble(jsonArray_closest_veloh.getJSONObject(closest).getString("longitude"));
+            double lat = Double.parseDouble(jsonArray_closest_veloh.getJSONObject(closest).getString("latitude"));
+            markerList.add(mMap.addMarker(new MarkerOptions()
+                    .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_CYAN))
+                    .title(display_jsonObject.getString("name"))
+                    .snippet(Integer.toString((display_jsonObject.getInt("number"))))
+                    .position(new LatLng(lat, lng))));
+            display_radius = false;
+            bus = false;
+            SavePreferences();
+        } //end if location null
+        else{
+            //This is what you need:
+            //locationManager.requestLocationUpdates(bestProvider, 1000, 0, LocationListener listener);
+            LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient, mLocationRequest, this);
+        }
+
+    } //end json
+
+////// VELOH STATIONS //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     public void performJSON_veloh() throws ExecutionException, InterruptedException, JSONException {
         locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
@@ -450,7 +528,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             JSONArray jsonArray_veloh = new JSONArray(result);
             Log.d("JSON array", jsonArray_veloh.toString());
             display_radius = true;
-
+            bus = false;
             Circle circle = mMap.addCircle(new CircleOptions()
                     .center(new LatLng(location.getLatitude(), location.getLongitude()))
                     .radius(draw_dist)
@@ -496,7 +574,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         }
 
     }
-
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     @Override
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
@@ -631,7 +709,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             }
         }
     }
-
+//////// SHARED PREFERENCES ///////////////////////////////////////////////////////////////////////////////////
     private void SavePreferences(){
         SharedPreferences sharedPreferences = getPreferences(MODE_PRIVATE);
         SharedPreferences.Editor editor = sharedPreferences.edit();
@@ -639,6 +717,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         editor.putInt("listSize", markerList.size());
         editor.putInt("draw_dist", draw_dist);
         editor.putBoolean("display_radius", display_radius);
+        editor.putBoolean("bus", bus);
         //editor.putLong("latitude", latitude);
 
         for(int i = 0; i <markerList.size(); i++){
@@ -667,6 +746,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         int size = sharedPreferences.getInt("listSize", 0);
         draw_dist = sharedPreferences.getInt("draw_dist", 0);
         display_radius = sharedPreferences.getBoolean("display_radius", false);
+        bus = sharedPreferences.getBoolean("bus", false);
 
         if (size > 0) {
             for (int i = 0; i < size; i++) {
@@ -675,7 +755,21 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 String title = sharedPreferences.getString("title" + i, "NULL");
                 String snippet = sharedPreferences.getString("snippet" + i, "NULL");
 
-                markerList.add(mMap.addMarker(new MarkerOptions().position(new LatLng(lat, lng)).title(title).snippet(snippet)));
+                if (bus) {
+                    markerList.add(mMap.addMarker(new MarkerOptions()
+                            .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_MAGENTA))
+                            .position(new LatLng(lat, lng))
+                            .title(title)
+                            .snippet(snippet)));
+                }
+                else {
+                    markerList.add(mMap.addMarker(new MarkerOptions()
+                            .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_CYAN))
+                            .position(new LatLng(lat, lng))
+                            .title(title)
+                            .snippet(snippet)));
+                }
+
             }
 
             locationManager = (LocationManager)  this.getSystemService(Context.LOCATION_SERVICE);
@@ -726,6 +820,28 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         super.onRestoreInstanceState(savedInstanceState);
 
     }
-//update
 
+//////// REAL TIME DEPARTURES METHODS //////////////////////////////////////
+
+public void perform_Json_departures () throws ExecutionException, InterruptedException, JSONException {
+
+    Log.e("TAG_title_click", "CLICKED Title!");
+
+    //Log.d("", marker.getTitle());
+
+    JSONTask myJson1 = new JSONTask(this);
+    myJson1.execute("https://api.tfl.lu/departures/8800088");
+    String result = myJson1.get();
+    Log.d("Result", result);
+
+    JSONArray jsonArray_departures = new JSONArray(result);
+    Log.d("JSON array", jsonArray_departures.toString());
+
+}
+
+    @Override
+    public void onInfoWindowClick(Marker marker) {
+        Toast.makeText(this, "Info window clicked",
+                Toast.LENGTH_SHORT).show();
+    }
 }
