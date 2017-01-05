@@ -19,6 +19,7 @@ import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
 import android.os.Handler;
 import android.support.v4.content.ContextCompat;
+import android.text.InputType;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
@@ -136,11 +137,24 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 if (actionId == EditorInfo.IME_ACTION_DONE) {
                     DeletePreferences();
                     clear();
-
+                      mEdit.setInputType(InputType.TYPE_CLASS_NUMBER);
                       Log.e("EditText", mEdit.getText().toString());
                       String value = mEdit.getText().toString();
-                      draw_dist = Integer.parseInt(value);
-                      Log.e("draw_dist", Integer.toString(draw_dist));
+
+                    try {
+
+                        draw_dist = Integer.parseInt(value);
+                        Log.e("draw_dist", Integer.toString(draw_dist));
+
+                    } catch (NumberFormatException e){
+                        Context context = getApplicationContext();
+                        CharSequence text = "Please enter a number!";
+                        int duration = Toast.LENGTH_SHORT;
+
+                        Toast toast = Toast.makeText(context, text, duration);
+                        toast.show();
+                    }
+
 
                     InputMethodManager inputManager = (InputMethodManager)
                             getSystemService(Context.INPUT_METHOD_SERVICE);
