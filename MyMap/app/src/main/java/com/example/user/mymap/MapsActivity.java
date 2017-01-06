@@ -54,6 +54,7 @@ import org.json.JSONObject;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.Array;
 import java.net.MalformedURLException;
 import java.net.URLConnection;
 import java.util.ArrayList;
@@ -62,7 +63,11 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.concurrent.ExecutionException;
 
 import static com.example.user.mymap.R.id.map;
@@ -856,14 +861,37 @@ public void perform_Json_departures (String stop_id, String stop_name) throws Ex
     Log.d("JSON array", jsonArray_departures.toString());
     Toast.makeText(this, "Departures obtained for: "+stop_id,
             Toast.LENGTH_SHORT).show();
-    String lines = " ";
-    for (int i = 0; i < jsonArray_departures.length(); i++) {
-        JSONObject jsonObject = jsonArray_departures.getJSONObject(i);
 
-        lines = lines+jsonArray_departures.getJSONObject(i).getString("line")+" ";
-        //String destination = jsonArray_departures.getJSONObject(i).getString("destination");
+    //keep only uniques bus lines in the list
+    String lines = " ";
+    int [] number = new int[jsonArray_departures.length()];
+    for (int i=0; i< jsonArray_departures.length(); i++) {
+        number[i] = Integer.parseInt(jsonArray_departures.getJSONObject(i).getString("line"));
     }
 
+    int [] uniques = new int[jsonArray_departures.length()];
+    int first = 0;                             // number of number in the array
+
+    for(int i = 0; i < number.length; i++) {
+         int newNum = number[i];
+         boolean alreadyThere = false;           // flag not in the array
+         for(int j = 0; j < first; j++) {           // loop through already registered number
+             if(newNum == uniques[j]) {          // check if already there
+                alreadyThere = true;               // yes it is there flag it
+                break;                                      // no need to check the other
+            }
+        }
+        if(!alreadyThere)                              // if was not there
+        uniques[first++] = newNum;         // add it and increment number of numbers registered
+    }
+
+    //create string to print in toast
+    for(int i= 0; i < uniques.length; i++) {
+        if (uniques[i] != 0){
+            lines = lines + uniques[i] + " ";
+        }
+    }
+    //display toast with bus lines for given station
     final Toast tag = Toast.makeText(getBaseContext(), stop_name+": "+lines, Toast.LENGTH_SHORT);
     tag.show();
     new CountDownTimer(9000, 1000)
@@ -871,6 +899,7 @@ public void perform_Json_departures (String stop_id, String stop_name) throws Ex
         public void onTick(long millisUntilFinished) {tag.show();}
         public void onFinish() {tag.show();}
     }.start();
+
 }
 
     @Override
