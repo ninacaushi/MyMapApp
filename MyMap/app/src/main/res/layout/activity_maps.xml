@@ -7,63 +7,98 @@
     android:layout_height="match_parent"
     tools:context="com.example.user.mymap.MapsActivity" >
 
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation= "vertical"
     android:paddingLeft="16dp"
     android:paddingRight="16dp">
 
+    <!--<TextView
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:id="@+id/text1"
+    android:text="RADIUS"
+    android:textColor="#000000"
+    android:background="#C0C0C0"
+    android:padding="10dp"
+    android:layout_marginTop="10dp"
+    android:textIsSelectable="false" />-->
+    <!--android:textStyle="bold"  android:paddingRight="10dp" android:text="radius" android:paddingRight="10dp"-->
+
     <EditText
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:inputType="numberSigned"
         android:digits="0123456789"
-        android:text="radius"
+        android:hint="radius"
         android:id="@+id/distance"
         android:textColor="#000000"
+        android:background="#C0C0C0"
+        android:padding="5dp"
+        android:layout_marginTop="10dp"
         android:imeOptions="actionDone"
-        android:maxLength="10"/>
+        android:maxLength="10" />
 
-    <Button
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:id="@+id/button_bus"
-        android:layout_marginTop="20dp"
-        android:onClick="Click"
-        android:padding="10dp"
-        android:paddingRight="10dp"
-        android:text="Click me for buses" />
+    <!--   <Button
+           android:layout_width="wrap_content"
+           android:layout_height="wrap_content"
+           android:id="@+id/button_bus"
+           android:layout_marginTop="10dp"
+           android:onClick="Click"
+           android:padding="10dp"
+           android:paddingRight="10dp"
+           android:text="Click me for buses" /> -->
 
-    <Button
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:id="@+id/button_veloh"
-        android:layout_marginTop="20dp"
-        android:onClick="Click"
-        android:padding="10dp"
-        android:paddingRight="10dp"
-        android:text="Click me for veloh" />
+       <Button
+           android:layout_width="wrap_content"
+           android:layout_height="wrap_content"
+           android:id="@+id/button_veloh"
+           android:layout_marginTop="4dp"
+           android:onClick="Click"
+           android:padding="10dp"
+           android:text="Veloh"
+           android:layout_toRightOf="@+id/distance"/>
 
 
-    <Button
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:id="@+id/button_closest_bus"
-        android:layout_marginTop="20dp"
-        android:onClick="Click"
-        android:padding="10dp"
-        android:paddingRight="10dp"
-        android:text="Closest buses" />
-    <Button
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:id="@+id/button_closest_veloh"
-        android:layout_marginTop="20dp"
-        android:onClick="Click"
-        android:padding="10dp"
-        android:paddingRight="10dp"
-        android:text="Closest veloh" />
-</LinearLayout>
-</fragment>
+       <!--    <Button
+               android:layout_width="wrap_content"
+               android:layout_height="wrap_content"
+               android:id="@+id/button_closest_bus"
+               android:layout_marginTop="10dp"
+               android:onClick="Click"
+               android:padding="10dp"
+               android:paddingRight="10dp"
+               android:text="Closest buses" /> -->
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/button_closest_veloh"
+            android:layout_marginTop="10dp"
+            android:onClick="Click"
+            android:padding="10dp"
+            android:text="Closest veloh"
+            android:layout_alignParentRight="true"
+            android:layout_alignParentBottom="true" />
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/button_closest_bus"
+            android:layout_marginTop="10dp"
+            android:onClick="Click"
+            android:padding="10dp"
+            android:text="Closest bus"
+            android:layout_toLeftOf="@+id/button_closest_veloh"
+            android:layout_alignParentBottom="true" />
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/button_geoJSON"
+            android:layout_marginTop="4dp"
+            android:onClick="Click"
+            android:padding="10dp"
+            android:text="Buses"
+            android:layout_toRightOf="@+id/button_veloh"/>
+    </RelativeLayout>
+    </fragment>
 
