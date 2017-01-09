@@ -68,8 +68,10 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.ExecutionException;
@@ -84,6 +86,7 @@ import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.maps.android.geojson.GeoJsonFeature;
 import com.google.maps.android.geojson.GeoJsonLayer;
 import com.google.maps.android.geojson.GeoJsonPointStyle;
+import com.google.maps.android.geometry.Point;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -103,6 +106,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         GoogleApiClient.ConnectionCallbacks,
         GoogleApiClient.OnConnectionFailedListener,
         GoogleMap.OnInfoWindowClickListener,
+        GoogleMap.OnMarkerClickListener,
         LocationListener {
 
     private GoogleMap mMap;
@@ -126,6 +130,16 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     String geodata = "{aa:xxxxx}";
     JSONObject geoJsonData = new JSONObject(geodata);
     GeoJsonLayer layer1 = new GeoJsonLayer(getMap(), geoJsonData);
+
+    //for closest bus
+    String geodata1 = "{aa:xxxxx}";
+    JSONObject geoJsonData1 = new JSONObject(geodata1);
+    GeoJsonLayer layer2 = new GeoJsonLayer(getMap(), geoJsonData1);
+
+    //for closest bus
+    String geodata2 = "{aa:xxxxx}";
+    JSONObject geoJsonData2 = new JSONObject(geodata2);
+    GeoJsonLayer layer3 = new GeoJsonLayer(getMap(), geoJsonData2);
 
     //used to compute closest bus/veloh
     public float min_distance = 1000000;
@@ -287,9 +301,11 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             @Override
             public void onClick(View v) {
                 //try {
+                    bus = true;
                     clear();
                     DeletePreferences();
                     removeGeoJsonLayerFromMap(layer1);
+                    removeGeoJsonLayerFromMap(layer2);
                     //performJSON_closest_veloh();
                     startDownload();
                 //} catch (ExecutionException e) {
@@ -299,6 +315,20 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 //} catch (JSONException e) {
                 //    e.printStackTrace();
                 //}
+            }
+        });
+
+        Button GeoJSONbutton1 = (Button) findViewById(R.id.button_closest_bus);
+        GeoJSONbutton1.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                bus = true;
+                clear();
+                DeletePreferences();
+                removeGeoJsonLayerFromMap(layer1);
+                removeGeoJsonLayerFromMap(layer2);
+
+                startDownload1();
             }
         });
 
@@ -332,6 +362,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             Log.d("Result", result);
 
             JSONArray jsonArray_buses = new JSONArray(result);
+
             Log.d("JSON array closest stop", jsonArray_buses.toString());
 
              for (int i = 0; i < jsonArray_buses.length(); i++) {
@@ -378,7 +409,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                     Log.d("Info Window click", marker.getSnippet());
                     try {
                         //clear();
-                        perform_Json_departures(marker.getSnippet(),marker.getTitle());
+                        //perform_Json_departures(marker.getSnippet(),marker.getTitle());
+                        perform_Json_departures(marker.getSnippet());
                     } catch (ExecutionException e) {
                         e.printStackTrace();
                     } catch (InterruptedException e) {
@@ -487,7 +519,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                             Log.d("Info Window click", marker.getSnippet());
                             try {
                                 //clear();
-                                perform_Json_departures(marker.getSnippet(), marker.getTitle());
+                                //perform_Json_departures(marker.getSnippet(), marker.getTitle());
+                                perform_Json_departures(marker.getSnippet());
                             } catch (ExecutionException e) {
                                 e.printStackTrace();
                             } catch (InterruptedException e) {
@@ -607,7 +640,11 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             JSONTask myJson = new JSONTask(this);
             myJson.execute("https://developer.jcdecaux.com/rest/vls/stations/Luxembourg.json");
             String result = myJson.get();
-            Log.d("Result", result);
+            if (result!=null) {
+                Log.d("Result", result);
+            }else{
+                Toast.makeText(this, "Error downloading data", Toast.LENGTH_LONG).show();
+            }
 
             JSONArray jsonArray_veloh = new JSONArray(result);
             Log.d("JSON array", jsonArray_veloh.toString());
@@ -806,6 +843,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         editor.putBoolean("bus", bus);
 
         editor.putString("geojson", geodata);
+        editor.putString("geojson1", geodata1);
         //editor.putLong("latitude", latitude);
 
         for(int i = 0; i <markerList.size(); i++){
@@ -837,19 +875,25 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         display_radius = sharedPreferences.getBoolean("display_radius", false);
         bus = sharedPreferences.getBoolean("bus", false);
 
-        geodata = sharedPreferences.getString("geojson", "NULL");
+        geodata = sharedPreferences.getString("geojson", "{aa:xxxxx}");
         JSONObject geoJsonData1 = null;
             try {
                 geoJsonData1 = new JSONObject(geodata);
             } catch (JSONException e) {
                 e.printStackTrace();
             }
+
+
             GeoJsonLayer layer2 = new GeoJsonLayer(getMap(), geoJsonData1);
 
-            if ((geodata!="{aa:xxxxx}")&&(geodata!="NULL")&&(bus)) {
+            if ((geodata!="{aa:xxxxx}")&&(geodata!="NULL")&&(bus)&&(display_radius)) {
                 addGeoJsonLayerToMap(layer2);
             }
 
+        geodata1 = sharedPreferences.getString("geojson1", "NULL");
+        //// to do - what to do with this string
+
+        //recreate marker list if needed
         if (size > 0) {
             for (int i = 0; i < size; i++) {
                 double lat = (double) sharedPreferences.getFloat("lat" + i, 0);
@@ -874,6 +918,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
             }
 
+            ///recreate circle if needed
             locationManager = (LocationManager)  this.getSystemService(Context.LOCATION_SERVICE);
             criteria = new Criteria();
             bestProvider = String.valueOf(locationManager.getBestProvider(criteria, true)).toString();
@@ -903,6 +948,11 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             }
         }
 
+        if ((bus)&&(display_radius==false)) {
+
+            closestBusListener ();
+        }
+
 
     }
     protected void onPause() {
@@ -925,7 +975,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
 //////// REAL TIME DEPARTURES METHODS //////////////////////////////////////
 
-public void perform_Json_departures (String stop_id, String stop_name) throws ExecutionException, InterruptedException, JSONException {
+//public void perform_Json_departures (String stop_id, String stop_name) throws ExecutionException, InterruptedException, JSONException {
+public void perform_Json_departures (String stop_id) throws ExecutionException, InterruptedException, JSONException {
 
     Log.e("TAG_title_click", "CLICKED Title!");
 
@@ -934,32 +985,42 @@ public void perform_Json_departures (String stop_id, String stop_name) throws Ex
     JSONTask myJson1 = new JSONTask(this);
     myJson1.execute("https://api.tfl.lu/v1/StopPoint/Departures/"+stop_id);
     String result = myJson1.get();
-    Log.d("Result", result);
-
+    if (result!=null) {
+        Log.d("Result", result);
+    }else {
+            Toast.makeText(this, "Error occurred.",
+            Toast.LENGTH_SHORT).show();
+        return;
+    }
     JSONArray jsonArray_departures = new JSONArray(result);
     Log.d("JSON array", jsonArray_departures.toString());
-    Toast.makeText(this, "Departures obtained for: "+stop_id,
-            Toast.LENGTH_SHORT).show();
+//    Toast.makeText(this, "Departures obtained:",
+//            Toast.LENGTH_SHORT).show();
 
     //keep only uniques bus lines in the list
     String lines = " ";
     int [] number = new int[jsonArray_departures.length()];
+    String [] direction = new String[jsonArray_departures.length()];
     for (int i=0; i< jsonArray_departures.length(); i++) {
         if (jsonArray_departures.getJSONObject(i).getString("line").matches("\\d+")) {
             number[i] = Integer.parseInt(jsonArray_departures.getJSONObject(i).getString("line"));
+            direction[i] = (jsonArray_departures.getJSONObject(i).getString("destination"));
             Log.e("TAG_line_departure", i+", "+Integer.toString(number[i])+" ");
         }
         else {
             number[i] = 0;
+            direction[i] = "NULL";
             Log.e("TAG_line_departure", i+", "+Integer.toString(number[i])+" ");
         }
     }
 
     int [] uniques = new int[jsonArray_departures.length()];
+    String [] directions = new String[jsonArray_departures.length()];
     int first = 0;                             // number of number in the array
 
     for(int i = 0; i < number.length; i++) {
          int newNum = number[i];
+         String newDir = direction[i];
          boolean alreadyThere = false;           // flag not in the array
          for(int j = 0; j < first; j++) {           // loop through already registered number
              if(newNum == uniques[j]) {          // check if already there
@@ -968,17 +1029,20 @@ public void perform_Json_departures (String stop_id, String stop_name) throws Ex
             }
         }
         if(!alreadyThere)                              // if was not there
-        uniques[first++] = newNum;         // add it and increment number of numbers registered
+        uniques[first] = newNum;         // add it and increment number of numbers registered
+        directions[first] = newDir;         // add direction
+        first=first+1;
     }
 
     //create string to print in toast
     for(int i= 0; i < uniques.length; i++) {
         if (uniques[i] != 0){
-            lines = lines + uniques[i] + " ";
+            lines = lines + uniques[i] + " -> " + directions[i] + " | ";
         }
     }
     //display toast with bus lines for given station
-    final Toast tag = Toast.makeText(getBaseContext(), stop_name+": "+lines, Toast.LENGTH_SHORT);
+    //final Toast tag = Toast.makeText(getBaseContext(), stop_name+": "+lines, Toast.LENGTH_SHORT);
+    final Toast tag = Toast.makeText(getBaseContext(), "Departures: "+lines, Toast.LENGTH_SHORT);
     tag.show();
     new CountDownTimer(9000, 1000)
     {
@@ -990,11 +1054,11 @@ public void perform_Json_departures (String stop_id, String stop_name) throws Ex
 
     @Override
     public void onInfoWindowClick(Marker marker) {
-        Toast.makeText(this, "Info window clicked",
-                Toast.LENGTH_SHORT).show();
+//        Toast.makeText(this, "Info window clicked",
+//                Toast.LENGTH_SHORT).show();
     }
 
-///// GEO_JSON_STUFF //////////////////////////////////////////////////////////////////////////////////////////
+///// GEO_JSON_BUSES_IN_AREA //////////////////////////////////////////////////////////////////////////////////////////
 
 
         private final static String mLogTag = "GeoJsonDemo";
@@ -1068,8 +1132,8 @@ public void perform_Json_departures (String stop_id, String stop_name) throws Ex
                     // Set options for the point style
                     pointStyle.setIcon(pointIcon);
                     //pointStyle.setTitle("Name" + name);
-                    pointStyle.setTitle("Name" + feature.getProperty("name"));
-                    pointStyle.setSnippet("ID: " + feature.getProperty("id")+", distance:"+feature.getProperty("distance")+"m");
+                    pointStyle.setTitle("Name: " + feature.getProperty("name"));
+                    pointStyle.setSnippet("ID: " + feature.getProperty("id")+", distance: "+feature.getProperty("distance")+"m");
 
                     // Assign the point style to the feature
                     feature.setPointStyle(pointStyle);
@@ -1077,10 +1141,13 @@ public void perform_Json_departures (String stop_id, String stop_name) throws Ex
             }
         }
 
+    @Override
+    public boolean onMarkerClick(Marker marker) {
+        return false;
+    }
 
 
-
-        private class DownloadGeoJsonFile extends AsyncTask<String, Void, GeoJsonLayer> {
+    private class DownloadGeoJsonFile extends AsyncTask<String, Void, GeoJsonLayer> {
 
             @Override
             protected GeoJsonLayer doInBackground(String... params) {
@@ -1171,15 +1238,16 @@ public void perform_Json_departures (String stop_id, String stop_name) throws Ex
                 layer1.setOnFeatureClickListener(new GeoJsonLayer.GeoJsonOnFeatureClickListener() {
                     @Override
                     public void onFeatureClick(GeoJsonFeature feature) {
-                        if (bus) {
-                            Toast.makeText(MapsActivity.this,
-                                    "Feature clicked: " + feature.getProperty("name"),
-                                    Toast.LENGTH_SHORT).show();
+                        if ((bus)&&(display_radius)) {
+//                            Toast.makeText(MapsActivity.this,
+//                                    "Requesting departures for: " + feature.getProperty("name"),
+//                                    Toast.LENGTH_SHORT).show();
 
                             //new DownloadGeoJsonFile().execute("https://api.tfl.lu/v1/StopPoint/Departures/"+feature.getProperty("id"));
                             try {
                                 //clear();
-                                perform_Json_departures(feature.getProperty("id"), feature.getProperty("name"));
+                                //perform_Json_departures(feature.getProperty("id"), feature.getProperty("name"));
+                                perform_Json_departures(feature.getProperty("id"));
                             } catch (ExecutionException e) {
                                 e.printStackTrace();
                             } catch (InterruptedException e) {
@@ -1199,6 +1267,292 @@ public void perform_Json_departures (String stop_id, String stop_name) throws Ex
             return mMap;
         }
 
+//////////////CLOSEST BUS GEOJSON //////////////////////////////////////////////////////////////
 
+private final static String mLogTag1 = "GeoJsonDemo";
+
+    protected void startDownload1() {
+        // Download the GeoJSON file.
+        retrieveFileFromUrl1();
+        // Alternate approach of loading a local GeoJSON file.
+        //retrieveFileFromResource();
+    }
+
+    private void retrieveFileFromUrl1() {
+
+                //get user location
+                locationManager = (LocationManager)  this.getSystemService(Context.LOCATION_SERVICE);
+                criteria = new Criteria();
+                bestProvider = String.valueOf(locationManager.getBestProvider(criteria, true)).toString();
+
+                //You can still do this if you like, you might get lucky:
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    checkLocationPermission();
+                }
+                Location location = locationManager.getLastKnownLocation(bestProvider);
+
+                if (location != null) {
+                    Log.e("TAG", "GPS is on");
+                    latitude = location.getLatitude();
+                    longitude = location.getLongitude();
+
+                    SavePreferences();
+                } //end if location null
+                else{
+                    //This is what you need:
+                    //locationManager.requestLocationUpdates(bestProvider, 1000, 0, LocationListener listener);
+                    LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient, mLocationRequest, this);
+                }
+
+        //get file for location and specific distance
+        new DownloadGeoJsonFile1().execute("https://api.tfl.lu/v1/StopPoint/around/"+longitude+"/"+latitude+"/100000");
+    }
+
+    private class DownloadGeoJsonFile1 extends AsyncTask<String, Void, GeoJsonLayer> {
+
+        @Override
+        protected GeoJsonLayer doInBackground(String... params) {
+            try {
+                // Open a stream from the URL
+                InputStream stream = new URL(params[0]).openStream();
+
+                String line;
+                StringBuilder result = new StringBuilder();
+                BufferedReader reader = new BufferedReader(new InputStreamReader(stream));
+
+                while ((line = reader.readLine()) != null) {
+                    // Read and save each line of the stream
+                    result.append(line);
+                }
+
+                // Close the stream
+                reader.close();
+                stream.close();
+                geodata1 = result.toString();
+                SavePreferences();
+                Log.e("TAG saved data string:", geodata1);
+                //JSONObject json = (JSONObject) JSONObject(result.toString());
+
+                //return new GeoJsonLayer(getMap(), new JSONObject(result.toString()));
+                return new GeoJsonLayer(getMap(), new JSONObject(result.toString()));
+            } catch (IOException e) {
+                Log.e(mLogTag1, "GeoJSON1 file could not be read");
+            } catch (JSONException e) {
+                Log.e(mLogTag1, "GeoJSON1 file could not be converted to a JSONObject");
+            }
+            return null;
+        }
+
+        @Override
+        protected void onPostExecute(GeoJsonLayer layer) {
+            if (layer != null) {
+                layer2 = layer;
+                addGeoJsonLayerToMap1(layer2);
+            }
+        }
+
+    }
+
+
+
+
+
+
+
+//        JSONArray data = test.getJSONArray("data");
+//        for(int i = 0; i < data.length(); i++) {
+//            try {
+//                episodeList.add(new Episode((JSONObject) data.get(i)));
+//            } catch (JSONException e) {
+//                e.printStackTrace();
+//            }
+//        }
+
+//
+//    } catch (JSONException e) {
+//        e.printStackTrace();
+//    }
+
+
+
+    private void addGeoJsonLayerToMap1(GeoJsonLayer layer2) {
+
+
+
+        //////////// Add geoJSON markers, layer , set listener ////////////////////
+
+        try {
+            checkMarkers(layer2);
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+
+
+    }
+    int ID_kept = 0;
+    private void checkMarkers(GeoJsonLayer layer2) throws JSONException {
+
+
+        double distance_to = 10000000;
+
+        // Iterate over all the features stored in the layer
+        for (GeoJsonFeature feature : layer2.getFeatures()) {
+            // Check if the magnitude property exists
+            if (feature.getProperty("id") != null && feature.hasProperty("name")) {
+
+                double distance_to_x = Double.parseDouble(feature.getProperty("distance"));
+
+                if (distance_to_x < distance_to) {
+                    distance_to = distance_to_x;
+                    ID_kept = Integer.parseInt(feature.getProperty("id"));
+
+                    Log.e("distance found", Double.toString(distance_to));
+                    Log.e("ID:", Integer.toString(ID_kept));
+                }
+            }
+        }
+
+//        for (GeoJsonFeature feature1 : layer2.getFeatures()) {
+//
+//            if (Integer.parseInt(feature1.getProperty("id")) == ID_kept) {
+//                Log.e("ID on layer 3:", Integer.toString(ID_kept));
+//                //Log.e("Geometry:", toString(feature1);
+//                //layer3.addFeature(feature1);
+//            }
+//        }
+
+        JSONObject test = new JSONObject(geodata1);
+        JSONArray feature_arr = test.getJSONArray("features");
+
+                for (int n = 0; n<feature_arr.length(); n++) {
+
+                    // Getting the coordinates
+                    JSONObject obj_geometry = feature_arr.getJSONObject(n)
+                            .getJSONObject("geometry");
+                    double lon = Double.parseDouble(obj_geometry.getJSONArray("coordinates")
+                            .get(0).toString());
+                    double lat = Double.parseDouble(obj_geometry.getJSONArray("coordinates")
+                            .get(1).toString());
+
+                    JSONObject obj_properties = feature_arr.getJSONObject(n)
+                            .getJSONObject("properties");
+
+                    String name = obj_properties.getString("name").toString();
+                    String id = obj_properties.getString("id").toString();
+                    String distance = obj_properties.getString("distance").toString();
+                    Log.e("properties", "lon: "+lon+" lat: "+lat+" id: "+id+" name: "+name+" distance: "+distance);
+                    Log.e("ID_kept", Integer.toString(ID_kept));
+                    if (Integer.parseInt(id) == ID_kept) {
+
+                        Log.e("ID MATCH", "id: "+id+" ID_kept: "+ID_kept);
+                        markerList.add(mMap.addMarker(new MarkerOptions()
+                                .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_MAGENTA))
+                                .title(name+" - "+distance+"m")
+                                //.snippet("ID: "+id+" Distance: " + distance)
+                                .snippet(id)
+                                .position(new LatLng(lat, lon))));
+
+
+
+                        display_radius = false;
+                        bus = true;
+
+                        closestBusListener ();
+                        SavePreferences();
+
+                        break;
+                    }
+
+
+                }
+
+
+
+
+
+
+        //layer3.addLayerToMap();
+
+
+
+//        // Demonstrate receiving features via GeoJsonLayer clicks.
+//        layer3.setOnFeatureClickListener(new GeoJsonLayer.GeoJsonOnFeatureClickListener() {
+//            @Override
+//            public void onFeatureClick(GeoJsonFeature feature) {
+//                if (bus) {
+//                    Toast.makeText(MapsActivity.this,
+//                            "Feature clicked: " + feature.getProperty("name"),
+//                            Toast.LENGTH_SHORT).show();
+//
+//                    try {
+//                        //clear();
+//                        perform_Json_departures(feature.getProperty("id"), feature.getProperty("name"));
+//                    } catch (ExecutionException e) {
+//                        e.printStackTrace();
+//                    } catch (InterruptedException e) {
+//                        e.printStackTrace();
+//                    } catch (JSONException e) {
+//                        e.printStackTrace();
+//                    }
+//                }
+//            }
+//        });
+
+
+
+
+
+//
+//        for (GeoJsonFeature feature2 : layer2.getFeatures()) {
+//            // Get the icon for the feature
+//            BitmapDescriptor pointIcon = BitmapDescriptorFactory
+//                    //.defaultMarker(magnitudeToColor(magnitude));
+//                    .defaultMarker(BitmapDescriptorFactory.HUE_MAGENTA);
+//
+//            // Create a new point style
+//            GeoJsonPointStyle pointStyle = new GeoJsonPointStyle();
+//
+//            // Set options for the point style
+//            pointStyle.setIcon(pointIcon);
+//            //pointStyle.setTitle("Name" + name);
+//            pointStyle.setTitle("Name" + feature2.getProperty("name"));
+//            pointStyle.setSnippet("ID: " + feature2.getProperty("id") + ", distance:" + feature2.getProperty("distance") + "m");
+//
+//            // Assign the point style to the feature
+//            feature2.setPointStyle(pointStyle);
+//
+//        }
+
+
+
+    }
+
+    private void closestBusListener () {
+        mMap.setOnMarkerClickListener(new GoogleMap.OnMarkerClickListener() {
+
+            @Override
+            public boolean onMarkerClick(Marker marker) {
+                //if (marker.getTitle().equals("MyHome")) // if marker source is clicked
+                if ((bus) && (display_radius == false)) // if marker source is clicked
+                {
+
+                    Log.d("Marker click", marker.getSnippet());
+                    try {
+                        //clear();
+                        //perform_Json_departures(marker.getSnippet(), marker.getTitle());
+                        perform_Json_departures(marker.getSnippet());
+                    } catch (ExecutionException e) {
+                        e.printStackTrace();
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+                }
+                return false;
+            }
+        });
+
+    }
 
 }
