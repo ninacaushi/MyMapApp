@@ -72,15 +72,12 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         LocationListener {
 
     private GoogleMap mMap;
-    //private Circle Circle;
-    //private Marker mMarker;
     public int draw_dist = 5000;
     GoogleApiClient mGoogleApiClient;
     LocationRequest mLocationRequest;
     Location mLastLocation;
     Marker mCurrLocationMarker;
 
-    //Location location;
     public double latitude;
     public double longitude;
 
@@ -481,6 +478,7 @@ public void perform_real_time_veloh (String station_no) throws ExecutionExceptio
         LoadPreferences();
     }
 
+
     protected synchronized void buildGoogleApiClient() {
         mGoogleApiClient = new GoogleApiClient.Builder(this)
                 .addConnectionCallbacks(this)
@@ -700,17 +698,17 @@ public void perform_real_time_veloh (String station_no) throws ExecutionExceptio
                 checkLocationPermission();
             }
 
+
+
             Location location = locationManager.getLastKnownLocation(bestProvider);
-            latitude = location.getLatitude();
-            longitude = location.getLongitude();
-            LatLng latlng = new LatLng(latitude,longitude);
-            //move map camera
-            mMap.moveCamera(CameraUpdateFactory.newLatLng(latlng));
-            mMap.animateCamera(CameraUpdateFactory.zoomTo(13));
 
             if ((location != null)) {
                 Log.e("TAG", "GPS is on");
                 if (display_radius) {
+                    LatLng latlng = new LatLng(latitude,longitude);
+                    //move map camera
+                    mMap.moveCamera(CameraUpdateFactory.newLatLng(latlng));
+                    mMap.animateCamera(CameraUpdateFactory.zoomTo(13));
 
                     latitude = location.getLatitude();
                     longitude = location.getLongitude();
@@ -723,6 +721,21 @@ public void perform_real_time_veloh (String station_no) throws ExecutionExceptio
                 }
             }
             else{
+
+
+
+                    // Permission was granted.
+                    if (ContextCompat.checkSelfPermission(this,
+                            Manifest.permission.ACCESS_FINE_LOCATION)
+                            == PackageManager.PERMISSION_GRANTED) {
+
+                        if (mGoogleApiClient == null) {
+                            buildGoogleApiClient();
+                        }
+                        mMap.setMyLocationEnabled(true);
+                    }
+
+
                 LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient, mLocationRequest, this);
             }
         }
@@ -736,6 +749,9 @@ public void perform_real_time_veloh (String station_no) throws ExecutionExceptio
     @Override
     public void onSaveInstanceState (Bundle savedInstanceState) {
             SavePreferences();
+        String cancel = "cancel";
+        Log.e("cancel", "cancel");
+        toast(cancel);
         super.onSaveInstanceState(savedInstanceState);
     }
 
@@ -824,7 +840,7 @@ public void perform_Json_departures (String stop_id) throws ExecutionException, 
             if (show_cancel=="show") {
                 tag.show();
 
-                timer = new CountDownTimer(9000, 1000) {
+                timer = new CountDownTimer(9000, 500) {
                     public void onTick(long millisUntilFinished) {
                         tag.show();
                     }
