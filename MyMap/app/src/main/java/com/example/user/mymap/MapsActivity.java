@@ -23,6 +23,7 @@ import android.support.v4.content.ContextCompat;
 import android.text.InputType;
 import android.util.Log;
 import android.view.KeyEvent;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
@@ -287,11 +288,25 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             }
         });
 
+
     }
 
 
 ///// CLOSEST VELOH ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
+//        @Override
+//        public boolean onTouchEvent(MotionEvent event) {
+//            String cancel = "cancel";
+//            Log.e("cancel", "cancel");
+//            toast(cancel);
+//            return super.onTouchEvent(event);
+//        }
+    @Override
+    public boolean dispatchTouchEvent(MotionEvent ev) {
+        String cancel = "cancel";
+        Log.e("cancel", "cancel");
+        toast(cancel);
+        return super.dispatchTouchEvent(ev);
+    }
     public void performJSON_closest_veloh() throws ExecutionException, InterruptedException, JSONException {
 
         locationManager = (LocationManager)  this.getSystemService(Context.LOCATION_SERVICE);
@@ -769,17 +784,6 @@ public void perform_real_time_veloh (String station_no) throws ExecutionExceptio
         }
 
 
-
-//        if (bus=false) {
-//             setInfoWindowListener();
-//        }
-//
-//        if ((bus)&&(display_radius==false)) {
-//
-//            closestBusListener ();
-//        }
-
-
     }
     protected void onPause() {
         super.onPause();
@@ -800,7 +804,7 @@ public void perform_real_time_veloh (String station_no) throws ExecutionExceptio
     }
 
 //////// REAL TIME DEPARTURES METHODS //////////////////////////////////////
-
+    String lines1 = " ";
 //public void perform_Json_departures (String stop_id, String stop_name) throws ExecutionException, InterruptedException, JSONException {
 public void perform_Json_departures (String stop_id) throws ExecutionException, InterruptedException, JSONException {
 
@@ -866,16 +870,33 @@ public void perform_Json_departures (String stop_id) throws ExecutionException, 
             lines = lines + uniques[i] + " -> " + directions[i] + " | ";
         }
     }
-
-    final Toast tag = Toast.makeText(getBaseContext(), "Departures: "+lines, Toast.LENGTH_SHORT);
-    tag.show();
-    new CountDownTimer(9000, 1000)
-    {
-        public void onTick(long millisUntilFinished) {tag.show();}
-        public void onFinish() {tag.show();}
-    }.start();
+    lines1 = lines;
+    String show = "show";
+    toast(show);
 
 }
+    CountDownTimer timer = null;
+    public void toast (String show_cancel) {
+        final Toast tag = Toast.makeText(getBaseContext(), "Departures: "+lines1, Toast.LENGTH_SHORT);
+            if (show_cancel=="show") {
+                tag.show();
+
+                timer = new CountDownTimer(9000, 1000) {
+                    public void onTick(long millisUntilFinished) {
+                        tag.show();
+                    }
+
+                    public void onFinish() {
+                        tag.show();
+                    }
+                }.start();
+            }else{
+                if ((show_cancel=="cancel")&&(timer!=null)){
+                    Log.e("cancel", "cancel");
+                    timer.cancel();
+                }
+            }
+    }
 
     @Override
     public void onInfoWindowClick(Marker marker) {
@@ -1287,229 +1308,3 @@ private final static String mLogTag1 = "GeoJsonDemo";
 
 }
 
-
-
-
-
-
-
-
-
-
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-///////////OLD STUFF////////////////////
-
-//
-//    ///// CLOSEST STOP ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//    public void performJSON_closest_buses() throws ExecutionException, InterruptedException, JSONException {
-//
-//        locationManager = (LocationManager)  this.getSystemService(Context.LOCATION_SERVICE);
-//        criteria = new Criteria();
-//        bestProvider = String.valueOf(locationManager.getBestProvider(criteria, true)).toString();
-//
-//        //You can still do this if you like, you might get lucky:
-//        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-//            checkLocationPermission();
-//        }
-//        Location location = locationManager.getLastKnownLocation(bestProvider);
-//        if (location != null) {
-//            Log.e("TAG", "GPS is on");
-//            latitude = location.getLatitude();
-//            longitude = location.getLongitude();
-//
-//            JSONTask myJson = new JSONTask(this);
-//            myJson.execute("https://api.tfl.lu/stations");
-//            String result = myJson.get();
-//            if (result == null) {
-//                Toast.makeText(this, "Request unsuccessful Please try again later.",
-//                        Toast.LENGTH_LONG).show();
-//                return;
-//            }
-//            Log.d("Result", result);
-//
-//            JSONArray jsonArray_buses = new JSONArray(result);
-//
-//            Log.d("JSON array closest stop", jsonArray_buses.toString());
-//
-//            for (int i = 0; i < jsonArray_buses.length(); i++) {
-//                JSONObject jsonObject = jsonArray_buses.getJSONObject(i);
-//                double lng = Double.parseDouble(jsonArray_buses.getJSONObject(i).getString("longitude"));
-//                double lat = Double.parseDouble(jsonArray_buses.getJSONObject(i).getString("latitude"));
-//
-//                Log.e("TAG_latlong", "latitude:" + latitude + " longitude:" + longitude + "marker_lat:" + lat + "marker_long:" + lng);
-//
-//                Location locationA = new Location("point A");
-//                locationA.setLatitude(lat);
-//                locationA.setLongitude(lng);
-//
-//                Location locationB = new Location("point B");
-//                locationB.setLatitude(latitude);
-//                locationB.setLongitude(longitude);
-//
-//
-//                float min_distance_old = min_distance;
-//                min_distance = min(min_distance, locationA.distanceTo(locationB));
-//
-//                if (min_distance_old != min_distance) {
-//                    closest = i;
-//                }
-//
-//            } //end for
-//
-//
-//            JSONObject display_jsonObject = jsonArray_buses.getJSONObject(closest);
-//            //save
-//            double lng = Double.parseDouble(jsonArray_buses.getJSONObject(closest).getString("longitude"));
-//            double lat = Double.parseDouble(jsonArray_buses.getJSONObject(closest).getString("latitude"));
-//            markerList.add(mMap.addMarker(new MarkerOptions()
-//                    .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_MAGENTA))
-//                    .title(display_jsonObject.getString("name"))
-//                    .snippet(Integer.toString((display_jsonObject.getInt("id"))))
-//                    .position(new LatLng(lat, lng))));
-//            display_radius = false;
-//            bus = true;
-//            mMap.setOnInfoWindowClickListener(new GoogleMap.OnInfoWindowClickListener() {
-//
-//                @Override
-//                public void onInfoWindowClick(Marker marker) {
-//                    Log.d("Info Window click", marker.getSnippet());
-//                    try {
-//                        //clear();
-//                        //perform_Json_departures(marker.getSnippet(),marker.getTitle());
-//                        perform_Json_departures(marker.getSnippet());
-//                    } catch (ExecutionException e) {
-//                        e.printStackTrace();
-//                    } catch (InterruptedException e) {
-//                        e.printStackTrace();
-//                    } catch (JSONException e) {
-//                        e.printStackTrace();
-//                    }
-//
-//                }
-//            });
-//
-////            mMap.setOnInfoWindowClickListener(new GoogleMap.OnInfoWindowClickListener() {
-////                @Override
-////                public void onInfoWindowClick(Marker marker) {
-////                    Intent intent = new Intent(MapsActivity.this,NewActivity.class);
-////                    startActivity(intent);
-////
-////
-////                }
-////            });
-//
-//            SavePreferences();
-//        } //end if location null
-//        else{
-//            //This is what you need:
-//            //locationManager.requestLocationUpdates(bestProvider, 1000, 0, LocationListener listener);
-//            LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient, mLocationRequest, this);
-//        }
-//
-//    } //end json
-//
-//
-//////// BUS STATIONS //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//
-//    public void performJSON_buses() throws ExecutionException, InterruptedException, JSONException {
-//
-//
-//        locationManager = (LocationManager)  this.getSystemService(Context.LOCATION_SERVICE);
-//        criteria = new Criteria();
-//        bestProvider = String.valueOf(locationManager.getBestProvider(criteria, true)).toString();
-//
-//        //You can still do this if you like, you might get lucky:
-//        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-//            checkLocationPermission();
-//        }
-//        Location location = locationManager.getLastKnownLocation(bestProvider);
-//        if (location != null) {
-//            Log.e("TAG", "GPS is on");
-//            latitude = location.getLatitude();
-//            longitude = location.getLongitude();
-//
-//            JSONTask myJson = new JSONTask(this);
-//            myJson.execute("https://api.tfl.lu/v1/StopPoint");
-//            String result = myJson.get();
-//
-//            Log.d("Result", result);
-//
-//            JSONArray jsonArray_buses = new JSONArray(result);
-//            //jsonArray_save = jsonArray_buses;
-//            Log.d("JSON array bus stations", jsonArray_buses.toString());
-//
-//            display_radius = true;
-//            bus = true;
-//            Circle circle = mMap.addCircle(new CircleOptions()
-//                    .center(new LatLng(location.getLatitude(), location.getLongitude()))
-//                    .radius(draw_dist)
-//                    .strokeColor(Color.DKGRAY)
-//                    .fillColor(Color.LTGRAY));
-//
-//
-//
-//            for (int i = 0; i < jsonArray_buses.length(); i++) {
-//                JSONObject jsonObject = jsonArray_buses.getJSONObject(i);
-//
-//                double lng = Double.parseDouble(jsonArray_buses.getJSONObject(i).getString("longitude"));
-//                double lat = Double.parseDouble(jsonArray_buses.getJSONObject(i).getString("latitude"));
-//
-//                Log.e("TAG_latlong", "latitude:" + latitude + " longitude:" + longitude + "marker_lat:" + lat + "marker_long:" + lng);
-//
-//                Location locationA = new Location("point A");
-//                locationA.setLatitude(lat);
-//                locationA.setLongitude(lng);
-//
-//                Location locationB = new Location("point B");
-//                locationB.setLatitude(latitude);
-//                locationB.setLongitude(longitude);
-//
-//                float distance = locationA.distanceTo(locationB);
-//
-//                if (distance < draw_dist) {
-//
-//
-//                    markerList.add(mMap.addMarker (new MarkerOptions()
-//                            .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_MAGENTA))
-//                            .title(jsonObject.getString("name"))
-//                            .snippet(Integer.toString((jsonObject.getInt("id"))))
-//                            .position(new LatLng(lat, lng))));
-//
-//                    //markerList.add(mMap.addMarker(mo));
-//                }
-//                if (bus=false) {
-//                    mMap.setOnInfoWindowClickListener(new GoogleMap.OnInfoWindowClickListener() {
-//
-//                        @Override
-//                        public void onInfoWindowClick(Marker marker) {
-//                            Log.d("Info Window click", marker.getSnippet());
-//                            try {
-//                                //clear();
-//                                //perform_Json_departures(marker.getSnippet(), marker.getTitle());
-//                                perform_Json_departures(marker.getSnippet());
-//                            } catch (ExecutionException e) {
-//                                e.printStackTrace();
-//                            } catch (InterruptedException e) {
-//                                e.printStackTrace();
-//                            } catch (JSONException e) {
-//                                e.printStackTrace();
-//                            }
-//
-//                        }
-//                    });
-//                }
-//            }
-//
-//            SavePreferences();
-//
-//        }
-//        else{
-//            //This is what you need:
-//            //locationManager.requestLocationUpdates(bestProvider, 1000, 0, LocationListener listener);
-//            LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient, mLocationRequest, this);
-//        }
-//
-//
-//    }
