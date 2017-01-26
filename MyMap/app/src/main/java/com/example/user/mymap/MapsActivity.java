@@ -330,6 +330,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         else{
             //This is what you need:
             //locationManager.requestLocationUpdates(bestProvider, 1000, 0, LocationListener listener);
+            Toast.makeText(this, "Could not obtain location.",
+                    Toast.LENGTH_SHORT).show();
             LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient, mLocationRequest, this);
         }
         setInfoWindowListener();
@@ -453,6 +455,8 @@ public void perform_real_time_veloh (String station_no) throws ExecutionExceptio
             SavePreferences();
         } else {
             //locationManager.requestLocationUpdates(bestProvider, 1000, 0, LocationListener listener);
+            Toast.makeText(this, "Could not obtain location.",
+                    Toast.LENGTH_SHORT).show();
             LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient, mLocationRequest, this);
         }
         setInfoWindowListener();
@@ -722,21 +726,22 @@ public void perform_real_time_veloh (String station_no) throws ExecutionExceptio
             }
             else{
 
-
-
-                    // Permission was granted.
-                    if (ContextCompat.checkSelfPermission(this,
-                            Manifest.permission.ACCESS_FINE_LOCATION)
-                            == PackageManager.PERMISSION_GRANTED) {
-
-                        if (mGoogleApiClient == null) {
-                            buildGoogleApiClient();
-                        }
-                        mMap.setMyLocationEnabled(true);
-                    }
-
-
-                LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient, mLocationRequest, this);
+                Toast.makeText(this, "No GPS connection.",
+                        Toast.LENGTH_SHORT).show();
+//
+//                    // Permission was granted.
+//                    if (ContextCompat.checkSelfPermission(this,
+//                            Manifest.permission.ACCESS_FINE_LOCATION)
+//                            == PackageManager.PERMISSION_GRANTED) {
+//
+//                        if (mGoogleApiClient == null) {
+//                            buildGoogleApiClient();
+//                        }
+//                        mMap.setMyLocationEnabled(true);
+//                    }
+//
+//
+//                LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient, mLocationRequest, this);
             }
         }
 
@@ -893,15 +898,20 @@ public void perform_Json_departures (String stop_id) throws ExecutionException, 
                     latitude = location.getLatitude();
                     longitude = location.getLongitude();
 
+                    //get file for location and specific distance
+                    new DownloadGeoJsonFile().execute("https://api.tfl.lu/v1/StopPoint/around/"+longitude+"/"+latitude+"/"+draw_dist);
+
                     SavePreferences();
                 } //end if location null
                 else{
                     //locationManager.requestLocationUpdates(bestProvider, 1000, 0, LocationListener listener);
+                    Toast.makeText(this, "Could not obtain location.",
+                            Toast.LENGTH_SHORT).show();
                     LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient, mLocationRequest, this);
                 }
 
             //get file for location and specific distance
-            new DownloadGeoJsonFile().execute("https://api.tfl.lu/v1/StopPoint/around/"+longitude+"/"+latitude+"/"+draw_dist);
+            //new DownloadGeoJsonFile().execute("https://api.tfl.lu/v1/StopPoint/around/"+longitude+"/"+latitude+"/"+draw_dist);
         }
 ////////// if file is local //////////////
 //        private void retrieveFileFromResource() {
@@ -1029,6 +1039,8 @@ public void perform_Json_departures (String stop_id) throws ExecutionException, 
             } //end if location null
             else{
                 //locationManager.requestLocationUpdates(bestProvider, 1000, 0, LocationListener listener);
+                Toast.makeText(this, "Could not obtain location.",
+                        Toast.LENGTH_SHORT).show();
                 LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient, mLocationRequest, this);
             }
 
@@ -1095,15 +1107,19 @@ private final static String mLogTag1 = "GeoJsonDemo";
                     latitude = location.getLatitude();
                     longitude = location.getLongitude();
 
+                    new DownloadGeoJsonFile1().execute("https://api.tfl.lu/v1/StopPoint/around/"+longitude+"/"+latitude+"/100000");
+
                     SavePreferences();
                 } //end if location null
                 else{
                     //locationManager.requestLocationUpdates(bestProvider, 1000, 0, LocationListener listener);
                     LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient, mLocationRequest, this);
+                    Toast.makeText(this, "Could not obtain location.",
+                            Toast.LENGTH_SHORT).show();
                 }
 
         //get file for location and specific distance
-        new DownloadGeoJsonFile1().execute("https://api.tfl.lu/v1/StopPoint/around/"+longitude+"/"+latitude+"/100000");
+        //new DownloadGeoJsonFile1().execute("https://api.tfl.lu/v1/StopPoint/around/"+longitude+"/"+latitude+"/100000");
     }
 
 
