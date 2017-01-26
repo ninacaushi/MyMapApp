@@ -479,7 +479,7 @@ public void perform_real_time_veloh (String station_no) throws ExecutionExceptio
             mMap.setMyLocationEnabled(true);
             mMap.setOnInfoWindowClickListener(this);
         }
-        LoadPreferences();
+      //  LoadPreferences();
     }
 
 
@@ -502,6 +502,7 @@ public void perform_real_time_veloh (String station_no) throws ExecutionExceptio
                 Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
             LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient, mLocationRequest, this);
         }
+        LoadPreferences();
     }
 
     @Override
@@ -642,7 +643,7 @@ public void perform_real_time_veloh (String station_no) throws ExecutionExceptio
         display_radius = sharedPreferences.getBoolean("display_radius", false);
         bus = sharedPreferences.getBoolean("bus", false);
 
-        /////////recreate buses in area layer ///////////////
+        /////////prepare recreation of buses in area layer ///////////////
         geodata = sharedPreferences.getString("geojson", "{aa:xxxxx}");
         JSONObject geoJsonData1 = null;
             try {
@@ -650,103 +651,87 @@ public void perform_real_time_veloh (String station_no) throws ExecutionExceptio
             } catch (JSONException e) {
                 e.printStackTrace();
             }
+        GeoJsonLayer layer2 = new GeoJsonLayer(getMap(), geoJsonData1);
 
+        //prepare location
+        locationManager = (LocationManager)  this.getSystemService(Context.LOCATION_SERVICE);
+        criteria = new Criteria();
+        bestProvider = String.valueOf(locationManager.getBestProvider(criteria, true)).toString();
 
-            GeoJsonLayer layer2 = new GeoJsonLayer(getMap(), geoJsonData1);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            checkLocationPermission();
+        }
 
+        Location location = locationManager.getLastKnownLocation(bestProvider);
+
+        if ((location != null)) {
+            Log.e("TAG", "GPS is on");
+
+            //display bus layer if it is the case
             if ((geodata!="{aa:xxxxx}")&&(geodata!="NULL")&&(bus)&&(display_radius)) {
                 addGeoJsonLayerToMap(layer2);
             }
-        // not used
-        //geodata1 = sharedPreferences.getString("geojson1", "NULL");
-        //// to do - what to do with this string
 
-        //recreate marker list if needed
-        if (size > 0) {
-            for (int i = 0; i < size; i++) {
-                double lat = (double) sharedPreferences.getFloat("lat" + i, 0);
-                double lng = (double) sharedPreferences.getFloat("lng" + i, 0);
-                String title = sharedPreferences.getString("title" + i, "NULL");
-                String snippet = sharedPreferences.getString("snippet" + i, "NULL");
+            //recreate marker list if needed
+            if (size > 0) {
 
-                if ((bus)&&(display_radius==false)) {
-                    markerList.add(mMap.addMarker(new MarkerOptions()
-                            .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_MAGENTA))
-                            .position(new LatLng(lat, lng))
-                            .title(title)
-                            .snippet(snippet)));
-                    if ((bus)&&(display_radius==false)) {
+                for (int i = 0; i < size; i++) {
+                    double lat = (double) sharedPreferences.getFloat("lat" + i, 0);
+                    double lng = (double) sharedPreferences.getFloat("lng" + i, 0);
+                    String title = sharedPreferences.getString("title" + i, "NULL");
+                    String snippet = sharedPreferences.getString("snippet" + i, "NULL");
 
-                        closestBusListener ();
+                    if ((bus) && (display_radius == false)) {
+                        markerList.add(mMap.addMarker(new MarkerOptions()
+                                .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_MAGENTA))
+                                .position(new LatLng(lat, lng))
+                                .title(title)
+                                .snippet(snippet)));
+
+                        if ((bus) && (display_radius == false)) {
+                            closestBusListener();
+                        }
+
+                    } else {
+                        markerList.add(mMap.addMarker(new MarkerOptions()
+                                .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_CYAN))
+                                .position(new LatLng(lat, lng))
+                                .title(title)
+                                .snippet(snippet)));
+                        if (bus == false) {
+                            setInfoWindowListener();
+                        }
                     }
                 }
-                else {
-                    markerList.add(mMap.addMarker(new MarkerOptions()
-                            .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_CYAN))
-                            .position(new LatLng(lat, lng))
-                            .title(title)
-                            .snippet(snippet)));
-                    if (bus==false) {
-                        setInfoWindowListener();
-                    }
-                }
-
             }
 
             ///recreate circle if needed
-            locationManager = (LocationManager)  this.getSystemService(Context.LOCATION_SERVICE);
-            criteria = new Criteria();
-            bestProvider = String.valueOf(locationManager.getBestProvider(criteria, true)).toString();
+            if (display_radius) {
+                LatLng latlng = new LatLng(latitude, longitude);
+                //move map camera
+                mMap.moveCamera(CameraUpdateFactory.newLatLng(latlng));
+                mMap.animateCamera(CameraUpdateFactory.zoomTo(13));
 
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                checkLocationPermission();
+                latitude = location.getLatitude();
+                longitude = location.getLongitude();
+
+                Circle circle = mMap.addCircle(new CircleOptions()
+                        .center(new LatLng(location.getLatitude(), location.getLongitude()))
+                        .radius(draw_dist)
+                        .strokeColor(Color.DKGRAY)
+                        .fillColor(Color.LTGRAY));
             }
 
-
-
-            Location location = locationManager.getLastKnownLocation(bestProvider);
-
-            if ((location != null)) {
-                Log.e("TAG", "GPS is on");
-                if (display_radius) {
-                    LatLng latlng = new LatLng(latitude,longitude);
-                    //move map camera
-                    mMap.moveCamera(CameraUpdateFactory.newLatLng(latlng));
-                    mMap.animateCamera(CameraUpdateFactory.zoomTo(13));
-
-                    latitude = location.getLatitude();
-                    longitude = location.getLongitude();
-
-                    Circle circle = mMap.addCircle(new CircleOptions()
-                            .center(new LatLng(location.getLatitude(), location.getLongitude()))
-                            .radius(draw_dist)
-                            .strokeColor(Color.DKGRAY)
-                            .fillColor(Color.LTGRAY));
-                }
-            }
-            else{
-
-                Toast.makeText(this, "No GPS connection.",
-                        Toast.LENGTH_SHORT).show();
-//
-//                    // Permission was granted.
-//                    if (ContextCompat.checkSelfPermission(this,
-//                            Manifest.permission.ACCESS_FINE_LOCATION)
-//                            == PackageManager.PERMISSION_GRANTED) {
-//
-//                        if (mGoogleApiClient == null) {
-//                            buildGoogleApiClient();
-//                        }
-//                        mMap.setMyLocationEnabled(true);
-//                    }
-//
-//
-//                LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient, mLocationRequest, this);
-            }
+        }else{
+        Toast.makeText(this, "Could not obtain location.",
+        Toast.LENGTH_SHORT).show();
+        LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient, mLocationRequest, this);
         }
 
-
     }
+
+
+
     protected void onPause() {
         super.onPause();
         SavePreferences();
@@ -769,7 +754,9 @@ public void perform_real_time_veloh (String station_no) throws ExecutionExceptio
     }
 
 //////// REAL TIME DEPARTURES METHODS //////////////////////////////////////
+
     String lines1 = " ";
+
 public void perform_Json_departures (String stop_id) throws ExecutionException, InterruptedException, JSONException {
 
     Log.e("TAG_title_click", "CLICKED Title!");
@@ -913,6 +900,8 @@ public void perform_Json_departures (String stop_id) throws ExecutionException, 
             //get file for location and specific distance
             //new DownloadGeoJsonFile().execute("https://api.tfl.lu/v1/StopPoint/around/"+longitude+"/"+latitude+"/"+draw_dist);
         }
+
+
 ////////// if file is local //////////////
 //        private void retrieveFileFromResource() {
 //            try {
@@ -924,6 +913,8 @@ public void perform_Json_departures (String stop_id) throws ExecutionException, 
 //                Log.e(mLogTag, "GeoJSON file could not be converted to a JSONObject");
 //            }
 //        }
+
+
 
         /**
          * Adds a point style to all features
@@ -1054,9 +1045,6 @@ public void perform_Json_departures (String stop_id) throws ExecutionException, 
                     @Override
                     public void onFeatureClick(GeoJsonFeature feature) {
                         if ((bus)&&(display_radius)) {
-//                            Toast.makeText(MapsActivity.this,
-//                                    "Requesting departures for: " + feature.getProperty("name"),
-//                                    Toast.LENGTH_SHORT).show();
                             try {
                                 perform_Json_departures(feature.getProperty("id"));
                             } catch (ExecutionException e) {
@@ -1071,8 +1059,6 @@ public void perform_Json_departures (String stop_id) throws ExecutionException, 
                 });
 
         }
-
-
 
     protected GoogleMap getMap() {
             return mMap;
